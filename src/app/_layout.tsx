@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { DarkTheme, DefaultTheme, Tabs, ThemeProvider } from 'expo-router';
-import { type ColorValue, useColorScheme } from 'react-native';
+import { type ColorValue } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { PhoneFrame } from '@/components/phone-frame';
 import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
