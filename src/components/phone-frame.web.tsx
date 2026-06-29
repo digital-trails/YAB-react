@@ -33,9 +33,9 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
           <StatusBar />
           <View style={styles.appArea}>{children}</View>
           {/* Dynamic Island sits over the status bar, clear of app content */}
-          <View style={styles.dynamicIsland} pointerEvents="none" />
+          <View style={styles.dynamicIsland} />
           {/* Home indicator */}
-          <View style={styles.homeIndicator} pointerEvents="none" />
+          <View style={styles.homeIndicator} />
         </View>
       </View>
     </View>
@@ -47,7 +47,7 @@ function StatusBar() {
   const tint = theme.text;
 
   return (
-    <View style={styles.statusBar} pointerEvents="none">
+    <View style={styles.statusBar}>
       <Text style={[styles.statusTime, { color: tint }]}>9:41</Text>
       <View style={styles.statusIcons}>
         <View style={styles.signal}>
@@ -93,6 +93,9 @@ const styles = StyleSheet.create({
   appArea: {
     flex: 1,
     position: 'relative',
+    // Leave room at the bottom so the tab bar clears the home indicator
+    // (on a real device the safe-area inset handles this).
+    paddingBottom: 20,
   },
   // Status bar
   statusBar: {
@@ -103,6 +106,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingBottom: 6,
     zIndex: 5,
+    pointerEvents: 'none',
   },
   statusTime: {
     fontSize: 15,
@@ -148,6 +152,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     backgroundColor: '#000',
     zIndex: 10,
+    pointerEvents: 'none',
   },
   homeIndicator: {
     position: 'absolute',
@@ -160,6 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     opacity: 0.28,
     zIndex: 10,
+    pointerEvents: 'none',
   },
   // Hardware buttons
   btnLeft: {

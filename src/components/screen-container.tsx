@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ScreenContainerProps = {
@@ -28,7 +28,7 @@ export function ScreenContainer({ title, subtitle, children }: ScreenContainerPr
         styles.content,
         {
           paddingTop: insets.top + Spacing.six,
-          paddingBottom: insets.bottom + BottomTabInset + Spacing.four,
+          paddingBottom: insets.bottom + Spacing.four,
         },
       ]}>
       <ThemedView style={styles.inner}>
