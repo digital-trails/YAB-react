@@ -8,7 +8,9 @@
     "scheme": "yab",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "edu.virginia.yab",
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
