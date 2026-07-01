@@ -10,7 +10,10 @@
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "edu.virginia.yab",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -42,6 +45,12 @@
       "typedRoutes": true,
       "reactCompiler": true,
       "baseUrl": "/YAB-react"
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c88a8727-b6b2-4fdd-9565-5b422a1a70ef"
+      }
     }
   }
 }
