@@ -2,7 +2,7 @@ name: Release to App Store Connect
 
 on:
   release:
-    types: [published, prereleased]
+    types: [prereleased, released]
 
 jobs:
   build-and-submit:

@@ -49,8 +49,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c88a8727-b6b2-4fdd-9565-5b422a1a70ef"
+        "projectId": "10dddd9b-bd7e-49e7-b35f-2267b11fb658"
       }
-    }
+    },
+    "owner": "uva-map-lab"
   }
 }
