@@ -7,6 +7,12 @@
     "icon": "./assets/images/icon.png",
     "scheme": "yab",
     "userInterfaceStyle": "automatic",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/10dddd9b-bd7e-49e7-b35f-2267b11fb658"
+    },
     "ios": {
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "edu.virginia.yab",

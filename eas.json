@@ -11,11 +11,26 @@
     "preview": {
       "distribution": "internal"
     },
+    "staging": {
+      "channel": "staging",
+      "environment": "preview",
+      "autoIncrement": true
+    },
     "production": {
+      "channel": "production",
+      "environment": "production",
       "autoIncrement": true
     }
   },
   "submit": {
+    "staging": {
+      "ios": {
+        "ascAppId": "6786030250"
+      },
+      "android": {
+        "track": "internal"
+      }
+    },
     "production": {
       "ios": {
         "ascAppId": "6786030250"
