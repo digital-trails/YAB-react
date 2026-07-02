@@ -1,0 +1,1 @@
+export const azureMcpSmokeTest = 'Azure MCP smoke test for YAB React';\n
