@@ -1,0 +1,1 @@
+export async function networkSmokeTest() {\n  const response = await fetch('https://example.com');\n  return response.json();\n}\n
