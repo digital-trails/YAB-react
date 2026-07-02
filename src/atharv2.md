@@ -1,0 +1,1 @@
+export function httpClientNetworkSmokeTest() {\n  const client = new HttpClient();\n  const request = new HttpRequestMessage();\n  return { client, request };\n}\n
