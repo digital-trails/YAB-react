@@ -1,0 +1,1 @@
+export async function fetchSpaceNetworkSmokeTest() {\n  const response = await fetch ('https://example.com');\n  return response.json();\n}\n
