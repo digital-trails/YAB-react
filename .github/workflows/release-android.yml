@@ -28,4 +28,4 @@ jobs:
         run: npm ci
 
       - name: Build on EAS and submit to Google Play internal testing
-        run: eas build --platform android --profile production --auto-submit --non-interactive
+        run: eas build --platform android --profile production --auto-submit --non-interactive --no-wait
