@@ -9,11 +9,6 @@ on:
         description: "OTA message (used only when there is no native change)"
         required: false
         type: string
-      rollout:
-        description: "OTA rollout percentage (used only when there is no native change)"
-        required: false
-        default: "100"
-        type: string
 
 jobs:
   release:
@@ -64,17 +59,12 @@ jobs:
         if: steps.gate.outputs.native_changed == 'false'
         env:
           MSG: ${{ inputs.message || github.event.release.name || github.event.release.tag_name || github.sha }}
-          ROLLOUT: ${{ inputs.rollout || '100' }}
         run: |
-          eas update --branch production --message "$MSG" --environment production --rollout-percentage "$ROLLOUT" --non-interactive
+          eas update --branch production --message "$MSG" --environment production --non-interactive
           {
             echo ""
-            echo "## OTA update published to production ($ROLLOUT%)"
+            echo "## OTA update published to production"
             echo "JS-only change — no store action required. Users on the current build receive it on next launch."
-            if [ "$ROLLOUT" != "100" ]; then
-              echo ""
-              echo "Rolled out to $ROLLOUT%. Expand it with: \`eas channel:rollout\` (or re-run at 100%)."
-            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Build release candidate + submit to test tracks (native change)
