@@ -1,4 +1,4 @@
-name: Release — OTA or store binary (production)
+name: Release — production (build-once)
 
 on:
   release:
@@ -6,8 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       message:
-        description: "OTA update message (used only when there is no native change)"
+        description: "OTA message (used only when there is no native change)"
         required: false
+        type: string
+      rollout:
+        description: "OTA rollout percentage (used only when there is no native change)"
+        required: false
+        default: "100"
         type: string
 
 jobs:
@@ -59,27 +64,33 @@ jobs:
         if: steps.gate.outputs.native_changed == 'false'
         env:
           MSG: ${{ inputs.message || github.event.release.name || github.event.release.tag_name || github.sha }}
+          ROLLOUT: ${{ inputs.rollout || '100' }}
         run: |
-          eas update --branch production --message "$MSG" --environment production --non-interactive
+          eas update --branch production --message "$MSG" --environment production --rollout-percentage "$ROLLOUT" --non-interactive
           {
             echo ""
-            echo "## OTA update published to production"
-            echo "JS-only change — no store action required. Users receive it on next app launch."
+            echo "## OTA update published to production ($ROLLOUT%)"
+            echo "JS-only change — no store action required. Users on the current build receive it on next launch."
+            if [ "$ROLLOUT" != "100" ]; then
+              echo ""
+              echo "Rolled out to $ROLLOUT%. Expand it with: \`eas channel:rollout\` (or re-run at 100%)."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Build + submit store binaries (native change)
+      - name: Build release candidate + submit to test tracks (native change)
         if: steps.gate.outputs.native_changed == 'true'
         run: |
           eas build --profile production --platform all --auto-submit --non-interactive --no-wait
           {
             echo ""
-            echo "## Native binaries queued (build + auto-submit)"
-            echo "A native change was detected, so new binaries are building on EAS and will auto-upload (iOS -> App Store Connect / TestFlight, Android -> Play internal track)."
+            echo "## Release candidate queued (build-once)"
+            echo "A native change was detected, so a new binary is building on EAS and will auto-upload to the test tracks (iOS -> TestFlight, Android -> Play internal)."
             echo ""
-            echo "### Manual store release required"
-            echo "Once the builds finish uploading:"
-            echo "- **iOS**: in App Store Connect, submit the new build for App Store review / release."
-            echo "- **Android**: in Play Console, promote the build from the internal track to Production."
+            echo "### Build-once flow — promote the SAME binary, do not rebuild"
+            echo "1. Test the uploaded build in TestFlight / Play internal."
+            echo "2. When approved, promote that exact build:"
+            echo "   - **iOS**: App Store Connect -> release the tested TestFlight build to the App Store."
+            echo "   - **Android**: Play Console -> promote the tested build from the internal track to Production."
             echo ""
             echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
           } >> "$GITHUB_STEP_SUMMARY"

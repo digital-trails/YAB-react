@@ -1,12 +1,12 @@
-name: Staging — OTA or TestFlight build
+name: Preview OTA — internal testing
 
 on:
   push:
-    branches: [staging]
+    branches: [develop]
   workflow_dispatch:
 
 jobs:
-  staging:
+  preview:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,42 +32,44 @@ jobs:
         run: |
           CHANGED=false
           {
-            echo "### Fingerprint check (staging)"
+            echo "### Fingerprint check (preview)"
             echo ""
             echo "| Platform | Result |"
             echo "| --- | --- |"
           } >> "$GITHUB_STEP_SUMMARY"
           for P in ios android; do
-            CURRENT=$(eas fingerprint:generate --platform "$P" --build-profile staging --non-interactive --json | jq -r '.hash')
-            LAST=$(eas build:list --channel staging --platform "$P" --status finished --limit 1 --non-interactive --json | jq -r '.[0].fingerprint.hash // empty')
+            CURRENT=$(eas fingerprint:generate --platform "$P" --build-profile preview --non-interactive --json | jq -r '.hash')
+            LAST=$(eas build:list --channel preview --platform "$P" --status finished --limit 1 --non-interactive --json | jq -r '.[0].fingerprint.hash // empty')
             echo "[$P] current=$CURRENT last=${LAST:-<none>}"
             if [ -z "$LAST" ] || [ "$CURRENT" != "$LAST" ]; then
               CHANGED=true
-              echo "| $P | native changed -> new build needed |" >> "$GITHUB_STEP_SUMMARY"
+              echo "| $P | native changed -> new preview build needed |" >> "$GITHUB_STEP_SUMMARY"
             else
               echo "| $P | unchanged -> OTA-eligible |" >> "$GITHUB_STEP_SUMMARY"
             fi
           done
           echo "native_changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
-      - name: Publish OTA update to staging (JS-only change)
+      - name: Publish OTA update to preview (JS-only change)
         if: steps.gate.outputs.native_changed == 'false'
         env:
           MSG: ${{ github.event.head_commit.message || github.sha }}
         run: |
-          eas update --branch staging --message "$MSG" --environment preview --non-interactive
+          eas update --branch preview --message "$MSG" --environment preview --non-interactive
           {
             echo ""
-            echo "## OTA update published to staging"
-            echo "JS-only change — testers on the current TestFlight / Play internal build get it on next launch. No store action needed."
+            echo "## Preview OTA published"
+            echo "JS-only change — internal testers on the preview build get it on next launch."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Build + submit to TestFlight and Play internal (native change)
+      - name: Build internal preview client (native change)
         if: steps.gate.outputs.native_changed == 'true'
         run: |
-          eas build --profile staging --platform all --auto-submit --non-interactive --no-wait
+          eas build --profile preview --platform all --non-interactive --no-wait
           {
             echo ""
-            echo "## Native build queued for staging"
-            echo "A native change was detected — new builds are building on EAS and will auto-upload to TestFlight (iOS) and Play internal (Android). Testers install the new build directly; no production store release needed for staging."
+            echo "## Internal preview build queued"
+            echo "A native change was detected — a new internal-distribution build is building on EAS. Share the EAS install link with testers; no store submission for the preview lane."
+            echo ""
+            echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
           } >> "$GITHUB_STEP_SUMMARY"
