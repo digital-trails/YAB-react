@@ -13,13 +13,13 @@ from azure.ai.projects import AIProjectClient
 # Use "agent:ui" for the YAB UI Design Agent.
 # Use "agent:backend" for the YAB Backend Agent.
 LABEL_TO_AGENT = {
-    "agent:ui": {
+    "ui-design-agent": {
         "env": "FOUNDRY_YAB_UI_AGENT_NAME",
         "type": "ui",
         "pretty": "YAB UI Design",
         "branch_prefix": "agent/ui",
     },
-    "agent:backend": {
+    "backend-agent": {
         "env": "FOUNDRY_YAB_BACKEND_AGENT_NAME",
         "type": "backend",
         "pretty": "YAB Backend",
