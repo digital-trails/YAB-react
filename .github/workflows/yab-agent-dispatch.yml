@@ -18,8 +18,8 @@ jobs:
   dispatch-agent:
     name: Dispatch YAB Agent
     if: >
-      github.event.label.name == 'agent:ui' ||
-      github.event.label.name == 'agent:backend'
+      github.event.label.name == 'ui-design-agent' ||
+      github.event.label.name == 'backup-agent'
 
     runs-on: ubuntu-latest
     timeout-minutes: 45
