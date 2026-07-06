@@ -56,23 +56,16 @@ jobs:
           done
           echo "native_changed=$CHANGED" >> "$GITHUB_OUTPUT"
 
-      - name: Build production binary (native change — NO auto-submit)
+      - name: Native change detected — promote the tested build (no rebuild)
         if: steps.gate.outputs.native_changed == 'true'
         run: |
-          eas build --profile production --platform all --non-interactive --no-wait
           {
             echo ""
-            echo "## Production build queued — native change detected"
-            echo "The binary is building on EAS. It is **not** auto-submitted. A developer promotes it deliberately:"
+            echo "## Native change detected — no build created"
+            echo "The release-candidate build already exists in TestFlight / Play internal. Promote **that tested build** — do not rebuild:"
             echo ""
-            echo "### 1. Upload the finished build to the stores"
-            echo '```'
-            echo "eas submit --profile production --platform all --latest"
-            echo '```'
-            echo "### 2. iOS — App Store Connect -> attach the build to a new App Store version -> Submit for Review."
-            echo "### 3. Android — Play Console -> promote internal -> Production."
-            echo ""
-            echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
+            echo "### iOS — App Store Connect -> attach the tested TestFlight build to a new App Store version -> Submit for Review."
+            echo "### Android — Play Console -> promote the tested build from internal -> Production."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish production OTA (no native change)

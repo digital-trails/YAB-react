@@ -1,0 +1,43 @@
+name: Testing build — release candidate (release/**)
+
+on:
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Builds the production binary and uploads it to TestFlight / Play internal
+      # for testing. This exact build is the release candidate — once validated,
+      # a developer promotes THIS build to the store (no rebuild).
+      - name: Build release candidate + submit to testing lanes
+        run: |
+          eas build --profile production --platform all --auto-submit --non-interactive --no-wait
+          {
+            echo "## Release-candidate build queued"
+            echo "A production binary is building on EAS and will auto-upload to TestFlight (iOS) + Play internal (Android)."
+            echo "This is the exact build you promote to the store once tested — no rebuild on \`main\`."
+            echo ""
+            echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
+          } >> "$GITHUB_STEP_SUMMARY"
