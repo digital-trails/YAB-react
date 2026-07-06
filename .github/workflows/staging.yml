@@ -1,0 +1,43 @@
+name: Staging — testing build (release/**)
+
+on:
+  push:
+    branches:
+      - "release/**"
+  workflow_dispatch:
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Staging always produces a fresh build, never OTA — testers install the
+      # compiled binary from TestFlight / Play internal and always run real,
+      # freshly-built JS.
+      - name: Build testing binary + submit
+        run: |
+          eas build --profile staging --platform all --auto-submit --non-interactive --no-wait
+          {
+            echo "## Testing build queued -> staging lane"
+            echo "A new binary is building on EAS and will auto-upload to TestFlight (iOS) + Play internal (Android)."
+            echo "Staging never receives OTA updates — each push produces a fresh build so testers always run compiled JS."
+            echo ""
+            echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
+          } >> "$GITHUB_STEP_SUMMARY"

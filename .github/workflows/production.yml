@@ -1,0 +1,88 @@
+name: Production — build or OTA (main)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "OTA message (JS-only changes)"
+        required: false
+        type: string
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect native change (fingerprint gate)
+        id: gate
+        run: |
+          CHANGED=false
+          {
+            echo "### Fingerprint check — production lane"
+            echo ""
+            echo "| Platform | Result |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          for P in ios android; do
+            CURRENT=$(eas fingerprint:generate --platform "$P" --build-profile production --non-interactive --json | jq -r '.hash')
+            LAST=$(eas build:list --channel production --platform "$P" --status finished --limit 1 --non-interactive --json | jq -r '.[0].fingerprint.hash // empty')
+            echo "[$P] current=$CURRENT last=${LAST:-<none>}"
+            if [ -z "$LAST" ] || [ "$CURRENT" != "$LAST" ]; then
+              CHANGED=true
+              echo "| $P | native changed -> new build needed |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $P | unchanged -> OTA-eligible |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+          echo "native_changed=$CHANGED" >> "$GITHUB_OUTPUT"
+
+      - name: Build production binary (native change — NO auto-submit)
+        if: steps.gate.outputs.native_changed == 'true'
+        run: |
+          eas build --profile production --platform all --non-interactive --no-wait
+          {
+            echo ""
+            echo "## Production build queued — native change detected"
+            echo "The binary is building on EAS. It is **not** auto-submitted. A developer promotes it deliberately:"
+            echo ""
+            echo "### 1. Upload the finished build to the stores"
+            echo '```'
+            echo "eas submit --profile production --platform all --latest"
+            echo '```'
+            echo "### 2. iOS — App Store Connect -> attach the build to a new App Store version -> Submit for Review."
+            echo "### 3. Android — Play Console -> promote internal -> Production."
+            echo ""
+            echo "Build status: https://expo.dev/accounts/uva-map-lab/projects/yab/builds"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish production OTA (no native change)
+        if: steps.gate.outputs.native_changed == 'false'
+        env:
+          MSG: ${{ inputs.message || github.event.head_commit.message || github.sha }}
+        run: |
+          eas update --branch production --environment production --message "$MSG" --non-interactive
+          {
+            echo ""
+            echo "## Production OTA published -> \`production\`"
+            echo "JS-only change — live production users get it on next app launch. No store action required."
+          } >> "$GITHUB_STEP_SUMMARY"
