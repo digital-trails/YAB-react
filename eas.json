@@ -8,10 +8,10 @@
       "developmentClient": true,
       "distribution": "internal"
     },
-    "preview": {
-      "distribution": "internal",
-      "channel": "preview",
-      "environment": "preview"
+    "staging": {
+      "channel": "staging",
+      "environment": "staging",
+      "autoIncrement": true
     },
     "production": {
       "channel": "production",
@@ -20,6 +20,14 @@
     }
   },
   "submit": {
+    "staging": {
+      "ios": {
+        "ascAppId": "6786030250"
+      },
+      "android": {
+        "track": "internal"
+      }
+    },
     "production": {
       "ios": {
         "ascAppId": "6786030250"
