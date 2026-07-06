@@ -32,7 +32,9 @@ export function ScreenContainer({ title, subtitle, children }: ScreenContainerPr
         },
       ]}>
       <ThemedView style={styles.inner}>
-        <ThemedText type="subtitle">{title}</ThemedText>
+        <ThemedText type="subtitle" accessibilityRole="header">
+          {title}
+        </ThemedText>
         {subtitle ? (
           <ThemedText themeColor="textSecondary" style={styles.subtitle}>
             {subtitle}
@@ -48,7 +50,9 @@ export function ScreenContainer({ title, subtitle, children }: ScreenContainerPr
 export function Card({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <ThemedView type="backgroundElement" style={styles.card}>
-      <ThemedText type="smallBold">{title}</ThemedText>
+      <ThemedText type="smallBold" accessibilityRole="header">
+        {title}
+      </ThemedText>
       {typeof children === 'string' ? (
         <ThemedText type="small" themeColor="textSecondary">
           {children}
