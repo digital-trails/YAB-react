@@ -6,7 +6,7 @@ export default function SettingsScreen() {
       <Card title="Appearance">
         The app already follows the system light/dark theme. Add toggles or options here.
       </Card>
-      <Card title="About">YAB · version 1.0.0</Card>
+      <Card title="About">YAB · version 1.0.1</Card>
     </ScreenContainer>
   );
 }
