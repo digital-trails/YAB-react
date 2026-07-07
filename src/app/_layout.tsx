@@ -36,11 +36,11 @@ export default function TabLayout() {
         <Tabs
           screenOptions={{
             headerShown: false,
-            tabBarActiveTintColor: colors.text,
+            tabBarActiveTintColor: colors.accent,
             tabBarInactiveTintColor: colors.textSecondary,
             tabBarStyle: {
-              backgroundColor: colors.background,
-              borderTopColor: colors.backgroundElement,
+              backgroundColor: colors.backgroundElement,
+              borderTopColor: colors.border,
             },
           }}>
           <Tabs.Screen
