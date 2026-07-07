@@ -25,6 +25,10 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## UI review checklist
+
+For small visual changes, briefly check the updated screen on a phone-sized viewport and confirm text remains readable, spacing feels consistent, and interactive elements have clear labels.
+
 ## Get a fresh project
 
 When you're ready, run:
