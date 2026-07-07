@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -46,8 +46,13 @@ export function ScreenContainer({ title, subtitle, children }: ScreenContainerPr
 
 /** Simple themed card for grouping placeholder content on a screen. */
 export function Card({ title, children }: { title: string; children?: ReactNode }) {
+  const theme = useTheme();
+
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView
+      type="backgroundElement"
+      style={[styles.card, { borderColor: theme.border, shadowColor: theme.accent }]}>
+      <View style={[styles.accentBar, { backgroundColor: theme.accent }]} />
       <ThemedText type="smallBold">{title}</ThemedText>
       {typeof children === 'string' ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -64,10 +69,20 @@ const styles = StyleSheet.create({
   scroll: {
     flex: 1,
   },
+  accentBar: {
+    width: 48,
+    height: Spacing.one,
+    borderRadius: Spacing.one,
+  },
   card: {
     gap: Spacing.two,
     padding: Spacing.three,
     borderRadius: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: Spacing.two },
+    shadowOpacity: 0.08,
+    shadowRadius: Spacing.three,
+    elevation: 2,
   },
   content: {
     flexGrow: 1,
