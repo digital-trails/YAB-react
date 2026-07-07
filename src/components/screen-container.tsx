@@ -46,8 +46,10 @@ export function ScreenContainer({ title, subtitle, children }: ScreenContainerPr
 
 /** Simple themed card for grouping placeholder content on a screen. */
 export function Card({ title, children }: { title: string; children?: ReactNode }) {
+  const theme = useTheme();
+
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.backgroundSelected }]}>
       <ThemedText type="smallBold">{title}</ThemedText>
       {typeof children === 'string' ? (
         <ThemedText type="small" themeColor="textSecondary">
@@ -68,6 +70,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     padding: Spacing.three,
     borderRadius: Spacing.three,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   content: {
     flexGrow: 1,
