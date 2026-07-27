@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useTheme } from '@/hooks/use-theme';
+import { Colors } from '@/constants/tokens';
 
 /**
  * On web, render the app inside a centered phone "device" so it reads as a
@@ -18,8 +18,6 @@ const PHONE_ASPECT = 393 / 852;
 const STATUS_BAR_HEIGHT = 50;
 
 export function PhoneFrame({ children }: { children: ReactNode }) {
-  const theme = useTheme();
-
   return (
     <View style={styles.backdrop}>
       <View style={styles.device}>
@@ -29,7 +27,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         <View style={[styles.btnLeft, styles.btnVolumeDown]} />
         <View style={styles.btnPower} />
 
-        <View style={[styles.screen, { backgroundColor: theme.background }]}>
+        <View style={[styles.screen, { backgroundColor: Colors.bg }]}>
           <StatusBar />
           <View style={styles.appArea}>{children}</View>
           {/* Dynamic Island sits over the status bar, clear of app content */}
@@ -43,8 +41,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
 }
 
 function StatusBar() {
-  const theme = useTheme();
-  const tint = theme.text;
+  const tint = Colors.text;
 
   return (
     <View style={styles.statusBar}>

@@ -1,66 +1,78 @@
-import { Ionicons } from '@expo/vector-icons';
-import { DarkTheme, DefaultTheme, Tabs, ThemeProvider } from 'expo-router';
-import { type ColorValue } from 'react-native';
+import '@/global.css';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
+import { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Caprasimo_400Regular } from '@expo-google-fonts/caprasimo';
+import {
+  Figtree_400Regular,
+  Figtree_600SemiBold,
+  Figtree_700Bold,
+} from '@expo-google-fonts/figtree';
+import { useFonts } from 'expo-font';
+import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui';
+import * as SplashScreen from 'expo-splash-screen';
+
 import { PhoneFrame } from '@/components/phone-frame';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { TABS, TabBar } from '@/components/ui/tab-bar';
+import { Colors } from '@/constants/tokens';
 
-type IoniconName = keyof typeof Ionicons.glyphMap;
+SplashScreen.preventAutoHideAsync();
 
-/** Per-tab icon, using the filled variant when the tab is active. */
-function tabIcon(base: IoniconName) {
-  return function TabBarIcon({
-    color,
-    size,
-    focused,
-  }: {
-    color: ColorValue;
-    size: number;
-    focused: boolean;
-  }) {
-    const name = (focused ? base : `${base}-outline`) as IoniconName;
-    return <Ionicons name={name} size={size} color={color} />;
-  };
-}
+export default function RootLayout() {
+  // Fonts are bundled, not fetched at runtime — the handoff calls for this
+  // explicitly so the app stays usable offline.
+  const [loaded, error] = useFonts({
+    Caprasimo_400Regular,
+    Figtree_400Regular,
+    Figtree_600SemiBold,
+    Figtree_700Bold,
+  });
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <PhoneFrame>
-        <AnimatedSplashOverlay />
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarActiveTintColor: colors.text,
-            tabBarInactiveTintColor: colors.textSecondary,
-            tabBarStyle: {
-              backgroundColor: colors.background,
-              borderTopColor: colors.backgroundElement,
-            },
-          }}>
-          <Tabs.Screen
-            name="index"
-            options={{ title: 'Home', tabBarIcon: tabIcon('home') }}
-          />
-          <Tabs.Screen
-            name="explore"
-            options={{ title: 'Explore', tabBarIcon: tabIcon('search') }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{ title: 'Profile', tabBarIcon: tabIcon('person') }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{ title: 'Settings', tabBarIcon: tabIcon('settings') }}
-          />
+    <PhoneFrame>
+      <View style={styles.root}>
+        <Tabs>
+          {/*
+            TabSlot's own container is `flexShrink: 0`, so without this a tall
+            scrolling screen expands it and pushes the tab bar out of view.
+          */}
+          <TabSlot style={styles.slot} />
+          <TabBar />
+          {/*
+            Route definitions for the custom tab bar above. `TabList` is the
+            configuration source; hiding it keeps the stock bar from rendering.
+          */}
+          <TabList style={styles.hidden}>
+            {TABS.map(({ name, href }) => (
+              <TabTrigger key={name} name={name} href={href} />
+            ))}
+          </TabList>
         </Tabs>
-      </PhoneFrame>
-    </ThemeProvider>
+      </View>
+    </PhoneFrame>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Colors.bg,
+  },
+  slot: {
+    flexShrink: 1,
+    minHeight: 0,
+  },
+  hidden: {
+    display: 'none',
+  },
+});
