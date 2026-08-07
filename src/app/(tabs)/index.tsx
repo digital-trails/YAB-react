@@ -52,6 +52,7 @@ export default function HomeScreen() {
         style={({ pressed }) => [styles.shiftIt, pressed && styles.pressed]}>
         <View style={styles.shiftPanel} pointerEvents="none" />
         <Text style={styles.shiftLabel}>SHIFT IT</Text>
+        <Ionicons name="play" size={26} color={Palette.text} />
       </Pressable>
 
       {/* Pick up where you left off */}
@@ -154,7 +155,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     height: 70,
     paddingHorizontal: 28,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     overflow: 'hidden',
     boxShadow: Shadow.elevSm,
   },
