@@ -1,7 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
 import { forwardRef, type Ref } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+
+// On web the headless `expo-router/ui` Tabs wrap each screen in a
+// `flexShrink: 0` container, so the screen grows to its content height and the
+// inner ScrollView never gets a bounded height to scroll within. Force the slot
+// to fill the frame and own the vertical scroll instead.
+const webSlotStyle =
+  Platform.OS === 'web' ? ({ flex: 1, minHeight: 0, overflowY: 'auto' } as const) : undefined;
 
 import { Palette, Radius } from '@/constants/tokens';
 
@@ -37,7 +44,7 @@ const TabButton = forwardRef(function TabButton(
 export default function TabsLayout() {
   return (
     <Tabs>
-      <TabSlot />
+      <TabSlot style={webSlotStyle} />
       <TabList asChild>
         <View style={styles.bar}>
           <TabTrigger name="home" href="/" asChild>

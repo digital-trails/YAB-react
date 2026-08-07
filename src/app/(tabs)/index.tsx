@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -20,9 +21,16 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}>
       {/* Logo / wordmark */}
-      <Heading style={styles.logo} numberOfLines={1}>
-        &lt;Logo&gt;Align
-      </Heading>
+      <View style={styles.logoRow}>
+        <Image
+          style={styles.logoMark}
+          source={require('@/assets/images/align-tune.svg')}
+          contentFit="contain"
+        />
+        <Heading style={styles.logo} numberOfLines={1}>
+          Align
+        </Heading>
+      </View>
 
       {/* Greeting */}
       <Heading style={styles.greeting} numberOfLines={1}>
@@ -101,7 +109,15 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.9 },
 
-  logo: { fontSize: 22, color: Palette.text, textAlign: 'center', marginBottom: 2 },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  logoMark: { width: 28, height: 28 },
+  logo: { fontSize: 22, color: Palette.text },
   greeting: { fontSize: 19, color: Palette.text },
 
   // Quote card
