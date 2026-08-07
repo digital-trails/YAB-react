@@ -1,65 +1,35 @@
-import { Ionicons } from '@expo/vector-icons';
-import { DarkTheme, DefaultTheme, Tabs, ThemeProvider } from 'expo-router';
-import { type ColorValue } from 'react-native';
+import { useFonts } from 'expo-font';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { PhoneFrame } from '@/components/phone-frame';
-import { Colors } from '@/constants/theme';
+import { Palette } from '@/constants/tokens';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-type IoniconName = keyof typeof Ionicons.glyphMap;
-
-/** Per-tab icon, using the filled variant when the tab is active. */
-function tabIcon(base: IoniconName) {
-  return function TabBarIcon({
-    color,
-    size,
-    focused,
-  }: {
-    color: ColorValue;
-    size: number;
-    focused: boolean;
-  }) {
-    const name = (focused ? base : `${base}-outline`) as IoniconName;
-    return <Ionicons name={name} size={size} color={color} />;
-  };
-}
-
-export default function TabLayout() {
+export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme === 'dark' ? 'dark' : 'light'];
+
+  // `--font-heading` (Caprasimo) is loaded at runtime from Google Fonts. We do
+  // not gate rendering on it — the heading style falls back to a serif until it
+  // resolves, then swaps in automatically.
+  useFonts({
+    Caprasimo:
+      'https://raw.githubusercontent.com/google/fonts/main/ofl/caprasimo/Caprasimo-Regular.ttf',
+  });
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <PhoneFrame>
         <AnimatedSplashOverlay />
-        <Tabs
+        <Stack
           screenOptions={{
             headerShown: false,
-            tabBarActiveTintColor: colors.text,
-            tabBarInactiveTintColor: colors.textSecondary,
-            tabBarStyle: {
-              backgroundColor: colors.background,
-              borderTopColor: colors.backgroundElement,
-            },
+            contentStyle: { backgroundColor: Palette.bg },
           }}>
-          <Tabs.Screen
-            name="index"
-            options={{ title: 'Home', tabBarIcon: tabIcon('home') }}
-          />
-          <Tabs.Screen
-            name="explore"
-            options={{ title: 'Explore', tabBarIcon: tabIcon('search') }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{ title: 'Profile', tabBarIcon: tabIcon('person') }}
-          />
-          <Tabs.Screen
-            name="settings"
-            options={{ title: 'Settings', tabBarIcon: tabIcon('settings') }}
-          />
-        </Tabs>
+          <Stack.Screen name="(tabs)" />
+          {/* Full-screen survey pushed over the tab bar when Tune In begins. */}
+          <Stack.Screen name="tune-in" options={{ animation: 'slide_from_bottom' }} />
+        </Stack>
       </PhoneFrame>
     </ThemeProvider>
   );

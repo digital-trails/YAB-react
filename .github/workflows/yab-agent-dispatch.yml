@@ -54,4 +54,4 @@ jobs:
           AGENT_BASE_BRANCH: ${{ vars.AGENT_BASE_BRANCH }}
           AGENT_REPO_FULL_NAME: digital-trails/YAB-react
         run: |
-          python scripts/dispatch_yab_agent.py
+          python scripts/dispatch-yab-agent.py

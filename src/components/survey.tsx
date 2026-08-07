@@ -1,0 +1,274 @@
+import { type ReactNode } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { Heading } from '@/components/ui';
+import { Palette, Radius, Shadow } from '@/constants/tokens';
+
+/** Question header: kicker + title + optional helper/subtitle. */
+export function QuestionHeader({
+  kicker,
+  title,
+  subtitle,
+}: {
+  kicker?: string;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <View style={styles.headerBlock}>
+      {kicker ? <Text style={styles.kicker}>{kicker}</Text> : null}
+      <Heading style={styles.title}>{title}</Heading>
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    </View>
+  );
+}
+
+/** Horizontal N-point scale with optional emoji glyphs and end labels. */
+export function ScaleInput({
+  points,
+  value,
+  onChange,
+  emojis,
+  minLabel,
+  maxLabel,
+}: {
+  points: number;
+  value: number | null;
+  onChange: (v: number) => void;
+  emojis?: string[];
+  minLabel?: string;
+  maxLabel?: string;
+}) {
+  return (
+    <View style={styles.scaleBlock}>
+      <View style={styles.scaleRow}>
+        {Array.from({ length: points }, (_, i) => i + 1).map((n) => {
+          const selected = value === n;
+          return (
+            <Pressable
+              key={n}
+              onPress={() => onChange(n)}
+              style={[styles.scaleDot, selected ? styles.scaleDotOn : styles.scaleDotOff]}>
+              {emojis ? (
+                <Text style={styles.scaleEmoji}>{emojis[n - 1]}</Text>
+              ) : (
+                <Text style={[styles.scaleNum, selected && styles.scaleNumOn]}>{n}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+      {minLabel || maxLabel ? (
+        <View style={styles.scaleLabels}>
+          <Text style={styles.scaleEndLabel}>{minLabel}</Text>
+          <Text style={styles.scaleEndLabel}>{maxLabel}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** Single-choice list of stacked option rows. */
+export function SingleSelect({
+  options,
+  value,
+  onChange,
+}: {
+  options: string[];
+  value: string | null;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={styles.optionList}>
+      {options.map((opt) => {
+        const selected = value === opt;
+        return (
+          <Pressable
+            key={opt}
+            onPress={() => onChange(opt)}
+            style={[styles.option, selected && styles.optionOn]}>
+            <Text style={[styles.optionText, selected && styles.optionTextOn]}>{opt}</Text>
+            <View style={[styles.radio, selected && styles.radioOn]}>
+              {selected ? <View style={styles.radioDot} /> : null}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Multi-choice list; toggles membership in `values`. */
+export function MultiSelect({
+  options,
+  values,
+  onToggle,
+}: {
+  options: string[];
+  values: string[];
+  onToggle: (v: string) => void;
+}) {
+  return (
+    <View style={styles.optionList}>
+      {options.map((opt) => {
+        const selected = values.includes(opt);
+        return (
+          <Pressable
+            key={opt}
+            onPress={() => onToggle(opt)}
+            style={[styles.option, selected && styles.optionOn]}>
+            <Text style={[styles.optionText, selected && styles.optionTextOn]}>{opt}</Text>
+            <View style={[styles.checkbox, selected && styles.checkboxOn]}>
+              {selected ? <Text style={styles.checkmark}>✓</Text> : null}
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Open-ended multiline text field. */
+export function TextField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor={Palette.neutral600}
+      multiline
+      style={styles.textField}
+    />
+  );
+}
+
+/** Suggestion chips (e.g. emotion words) that append to a text answer. */
+export function Chips({ items, onPick }: { items: string[]; onPick: (v: string) => void }) {
+  return (
+    <View style={styles.chipRow}>
+      {items.map((item) => (
+        <Pressable key={item} onPress={() => onPick(item)} style={styles.chip}>
+          <Text style={styles.chipText}>{item}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** Collapsible "What does this mean?" info panel. */
+export function InfoNote({ children }: { children: ReactNode }) {
+  return (
+    <View style={styles.infoNote}>
+      <Text style={styles.infoText}>{children}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  headerBlock: { gap: 8 },
+  kicker: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.66,
+    color: Palette.accent2_700,
+  },
+  title: { fontSize: 22, color: Palette.text, lineHeight: 28 },
+  subtitle: { fontSize: 13.5, color: Palette.neutral700, lineHeight: 20 },
+
+  scaleBlock: { gap: 8 },
+  scaleRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
+  scaleDot: {
+    flex: 1,
+    aspectRatio: 1,
+    maxWidth: 56,
+    borderRadius: Radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  scaleDotOff: { backgroundColor: '#FCF7EE', borderColor: Palette.neutral300 },
+  scaleDotOn: { backgroundColor: Palette.accent2, borderColor: Palette.accent2 },
+  scaleEmoji: { fontSize: 22 },
+  scaleNum: { fontSize: 15, fontWeight: '700', color: Palette.neutral700 },
+  scaleNumOn: { color: Palette.bg },
+  scaleLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  scaleEndLabel: { fontSize: 11.5, color: Palette.neutral600 },
+
+  optionList: { gap: 10 },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: 15,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Palette.neutral300,
+    backgroundColor: '#FCF7EE',
+  },
+  optionOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
+  optionText: { flex: 1, fontSize: 14.5, color: Palette.text },
+  optionTextOn: { fontWeight: '600', color: Palette.accent2_800 },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: Palette.neutral300,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: { borderColor: Palette.accent2 },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Palette.accent2 },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Palette.neutral300,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2 },
+  checkmark: { color: Palette.bg, fontSize: 13, fontWeight: '700', lineHeight: 16 },
+
+  textField: {
+    minHeight: 96,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Palette.neutral300,
+    backgroundColor: '#FCF7EE',
+    padding: 14,
+    fontSize: 14.5,
+    color: Palette.text,
+    textAlignVertical: 'top',
+  },
+
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    borderColor: Palette.accent2_200,
+    backgroundColor: Palette.accent2_100,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  chipText: { fontSize: 12.5, color: Palette.accent2_800, fontWeight: '600' },
+
+  infoNote: {
+    borderRadius: Radius.lg,
+    backgroundColor: Palette.accent2_100,
+    padding: 14,
+    boxShadow: Shadow.elevSm,
+  },
+  infoText: { fontSize: 13, color: Palette.accent2_800, lineHeight: 19 },
+});
