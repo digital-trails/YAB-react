@@ -28,7 +28,7 @@ export default function HomeScreen() {
           contentFit="contain"
         />
         <Heading style={styles.logo} numberOfLines={1}>
-          No Comparisons
+          No Comparison
         </Heading>
       </View>
 
