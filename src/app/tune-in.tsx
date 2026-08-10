@@ -109,8 +109,9 @@ type Answers = {
   doing: string[];
   triggerText: string;
   target: string[];
-  jThoughts: string;
+  jFeelings: string;
   jIntensity: number | null;
+  jThoughts: string;
   jAfter: string;
   jNext: string[];
 };
@@ -130,8 +131,9 @@ const INITIAL: Answers = {
   doing: [],
   triggerText: '',
   target: [],
-  jThoughts: '',
+  jFeelings: '',
   jIntensity: null,
+  jThoughts: '',
   jAfter: '',
   jNext: [],
 };
@@ -299,23 +301,23 @@ export default function TuneInSurvey() {
       ),
     },
     {
-      key: 'j-thoughts',
+      key: 'j-feelings',
       content: (
         <>
           <QuestionHeader
             kicker="Reflect"
-            title="What thoughts and feelings came up after?"
+            title="What feelings came up after the comparison?"
           />
           <TextField
-            value={a.jThoughts}
-            onChange={(v) => set('jThoughts', v)}
+            value={a.jFeelings}
+            onChange={(v) => set('jFeelings', v)}
             placeholder="Whatever comes to mind…"
           />
           <Text style={styles.optionalLabel}>Need a word? Tap to add one.</Text>
           <Chips
             items={EMOTION_WORDS}
             onPick={(word) =>
-              set('jThoughts', a.jThoughts ? `${a.jThoughts.trim()}, ${word.toLowerCase()}` : word)
+              set('jFeelings', a.jFeelings ? `${a.jFeelings.trim()}, ${word.toLowerCase()}` : word)
             }
           />
         </>
@@ -333,6 +335,19 @@ export default function TuneInSurvey() {
             onChange={(v) => set('jIntensity', v)}
             minLabel="Barely"
             maxLabel="Very intense"
+          />
+        </>
+      ),
+    },
+    {
+      key: 'j-thoughts',
+      content: (
+        <>
+          <QuestionHeader title="What thoughts came up tied to the comparison?" />
+          <TextField
+            value={a.jThoughts}
+            onChange={(v) => set('jThoughts', v)}
+            placeholder="Whatever comes to mind…"
           />
         </>
       ),
@@ -368,7 +383,7 @@ export default function TuneInSurvey() {
       canContinue: a.mood !== null,
       content: (
         <>
-          <QuestionHeader kicker="Check in" title="How do you feel, Maya?" />
+          <QuestionHeader kicker="Check in" title="How do you feel Maya?" />
           <ScaleInput
             points={5}
             value={a.mood}
@@ -465,7 +480,6 @@ export default function TuneInSurvey() {
 
   const current = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;
-  const progress = (step + 1) / steps.length;
 
   const goBack = () => (step > 0 ? setStep(step - 1) : close());
   const goNext = () => {
@@ -479,9 +493,7 @@ export default function TuneInSurvey() {
         <Pressable onPress={goBack} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={22} color={Palette.neutral700} />
         </Pressable>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-        </View>
+        <View style={styles.flex} />
         <Pressable onPress={close} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="close" size={22} color={Palette.neutral700} />
         </Pressable>
@@ -523,14 +535,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerBtn: { padding: 2 },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.neutral300,
-    overflow: 'hidden',
-  },
-  progressFill: { height: '100%', borderRadius: Radius.pill, backgroundColor: Palette.accent2 },
   body: { padding: 20, gap: 18 },
   optionalLabel: { fontSize: 12.5, color: Palette.neutral700, marginTop: 2 },
   footer: {

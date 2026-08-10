@@ -28,13 +28,13 @@ export default function HomeScreen() {
           contentFit="contain"
         />
         <Heading style={styles.logo} numberOfLines={1}>
-          Align
+          No Comparisons
         </Heading>
       </View>
 
       {/* Greeting */}
       <Heading style={styles.greeting} numberOfLines={1}>
-        Good afternoon, Maya
+        Good afternoon Maya
       </Heading>
 
       {/* Quote card */}
