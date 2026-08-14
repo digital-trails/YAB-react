@@ -31,6 +31,8 @@ export default function RootLayout() {
           <Stack.Screen name="tune-in" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="library-flow" options={{ animation: 'slide_from_bottom' }} />
           <Stack.Screen name="goals-flow" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="accomplishments-flow" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="community-flow" options={{ animation: 'slide_from_bottom' }} />
         </Stack>
       </PhoneFrame>
     </ThemeProvider>
