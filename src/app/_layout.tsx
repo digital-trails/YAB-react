@@ -27,8 +27,12 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: Palette.bg },
           }}>
           <Stack.Screen name="(tabs)" />
-          {/* Full-screen survey pushed over the tab bar when Tune In begins. */}
+          {/* Full-screen flows pushed over the tab bar. */}
           <Stack.Screen name="tune-in" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="library-flow" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="goals-flow" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="accomplishments-flow" options={{ animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="community-flow" options={{ animation: 'slide_from_bottom' }} />
         </Stack>
       </PhoneFrame>
     </ThemeProvider>
