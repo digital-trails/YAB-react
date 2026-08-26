@@ -18,6 +18,7 @@ import {
   InfoNote,
   MultiSelect,
   QuestionHeader,
+  RatingSlider,
   ScaleInput,
   SingleSelect,
   TextField,
@@ -88,12 +89,8 @@ const EMOTION_WORDS = [
   'Sad',
 ];
 
-const NEXT_CHOICES = [
-  'Practice a skill',
-  'Talk to someone',
-  'Take a break from scrolling',
-  'Put the phone away',
-];
+const NEXT_CHOICES = ['Practice a skill', 'Something else'];
+const NEXT_IDEAS = ['Talk to someone', 'Put the phone away', 'Take a break from scrolling'];
 
 type Answers = {
   mood: number | null;
@@ -115,7 +112,8 @@ type Answers = {
   jIntensity: number | null;
   jThoughts: string;
   jAfter: string;
-  jNext: string[];
+  jNextChoice: string | null;
+  jNext: string;
 };
 
 const INITIAL: Answers = {
@@ -128,17 +126,18 @@ const INITIAL: Answers = {
   reflection: '',
   platforms: [],
   platformOther: '',
-  intensity: null,
+  intensity: 50,
   domains: [],
   domainOther: '',
   doing: [],
   triggerText: '',
   target: [],
   jFeelings: '',
-  jIntensity: null,
+  jIntensity: 50,
   jThoughts: '',
   jAfter: '',
-  jNext: [],
+  jNextChoice: null,
+  jNext: '',
 };
 
 type Step = {
@@ -158,11 +157,12 @@ export default function TuneInSurvey() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>(INITIAL);
+  const [showNextIdeas, setShowNextIdeas] = useState(false);
 
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) =>
     setA((prev) => ({ ...prev, [key]: value }));
 
-  const toggle = (key: 'platforms' | 'domains' | 'doing' | 'target' | 'jNext', value: string) =>
+  const toggle = (key: 'platforms' | 'domains' | 'doing' | 'target', value: string) =>
     setA((prev) => {
       const list = prev[key];
       return {
@@ -174,7 +174,7 @@ export default function TuneInSurvey() {
   const close = () => router.back();
   const advanceAfterSelection = () => setStep((currentStep) => currentStep + 1);
   const previousStep = useRef(step);
-  const questionOpacity = useRef(new Animated.Value(1)).current;
+  const [questionOpacity] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     if (previousStep.current === step) return;
@@ -203,7 +203,7 @@ export default function TuneInSurvey() {
           <SingleSelect
             options={[
               'Someone had something I wanted',
-              'I had more of something than someone else',
+              "I had something the other person didn’t.",
               'We seemed about the same',
             ]}
             value={a.kind}
@@ -262,23 +262,19 @@ export default function TuneInSurvey() {
     {
       key: 'intensity',
       canContinue: a.intensity !== null,
-      autoAdvance: true,
       content: (
         <>
           <QuestionHeader
             title="When the feeling was strongest, how did the comparison feel?"
           />
-          <ScaleInput
-            points={7}
-            value={a.intensity}
-            onChange={(v) => {
-              set('intensity', v);
-              advanceAfterSelection();
-            }}
+          <RatingSlider
+            value={a.intensity ?? 50}
+            onChange={(v) => set('intensity', v)}
+            minEmoji="😊"
+            maxEmoji="😔"
             minLabel="Very positive"
             maxLabel="Very negative"
           />
-          <Text style={styles.scaleHint}>Tap from Very positive to Very negative to show how it felt.</Text>
         </>
       ),
     },
@@ -360,21 +356,17 @@ export default function TuneInSurvey() {
     {
       key: 'j-intensity',
       canContinue: a.jIntensity !== null,
-      autoAdvance: true,
       content: (
         <>
           <QuestionHeader title="How intense were those feelings?" />
-          <ScaleInput
-            points={7}
-            value={a.jIntensity}
-            onChange={(v) => {
-              set('jIntensity', v);
-              advanceAfterSelection();
-            }}
+          <RatingSlider
+            value={a.jIntensity ?? 50}
+            onChange={(v) => set('jIntensity', v)}
+            minEmoji="😌"
+            maxEmoji="😰"
             minLabel="Not at all"
             maxLabel="Very much"
           />
-          <Text style={styles.scaleHint}>Tap how strong those feelings were.</Text>
         </>
       ),
     },
@@ -406,10 +398,45 @@ export default function TuneInSurvey() {
     },
     {
       key: 'j-next',
+      canContinue: a.jNextChoice === 'Practice a skill' || (a.jNextChoice === 'Something else' && a.jNext.trim().length > 0),
       content: (
         <>
-          <QuestionHeader title="What would you like to do next?" subtitle="Pick any that feel right." />
-          <MultiSelect options={NEXT_CHOICES} values={a.jNext} onToggle={(v) => toggle('jNext', v)} />
+          <QuestionHeader title="What would you like to do next?" />
+          <SingleSelect
+            options={NEXT_CHOICES}
+            value={a.jNextChoice}
+            onChange={(v) => {
+              setShowNextIdeas(false);
+              set('jNextChoice', v);
+              if (v === 'Practice a skill') set('jNext', '');
+            }}
+          />
+          {a.jNextChoice === 'Something else' ? (
+            <View style={styles.nextDetails}>
+              <TextField
+                value={a.jNext}
+                onChange={(v) => set('jNext', v)}
+                placeholder="What would you like to do?"
+              />
+              <Btn
+                label="Need an idea?"
+                variant="ghost"
+                onPress={() => setShowNextIdeas((shown) => !shown)}
+              />
+              {showNextIdeas ? (
+                <View style={styles.ideaList}>
+                  {NEXT_IDEAS.map((idea) => (
+                    <Pressable
+                      key={idea}
+                      onPress={() => set('jNext', idea)}
+                      style={[styles.idea, a.jNext === idea && styles.ideaOn]}>
+                      <Text style={styles.ideaText}>{idea}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ),
     },
@@ -551,8 +578,11 @@ export default function TuneInSurvey() {
 
   const current = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;
-  const progressStart = a.compared ? 2 : 1;
-  const progress = Math.min(1, Math.max(0, (step + 1 - progressStart) / Math.max(1, steps.length - progressStart)));
+  const inBranch = a.compared === 'Yes' || (a.compared === 'Not sure' && (a.clarifier === 'Yes' || a.clarifier === 'Maybe'));
+  const progressStart = 2;
+  const progress = inBranch
+    ? Math.min(1, Math.max(0, (step + 1 - progressStart) / Math.max(1, steps.length - progressStart - 1)))
+    : 0;
 
   const goBack = () => (step > 0 ? setStep(step - 1) : close());
   const goNext = () => {
@@ -566,7 +596,13 @@ export default function TuneInSurvey() {
         <Pressable onPress={goBack} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={22} color={Palette.neutral700} />
         </Pressable>
-        <View style={styles.flex} />
+        {inBranch ? (
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
+        ) : (
+          <View style={styles.flex} />
+        )}
         <Pressable onPress={close} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="close" size={22} color={Palette.neutral700} />
         </Pressable>
@@ -610,6 +646,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerBtn: { padding: 2 },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    backgroundColor: Palette.neutral300,
+  },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: Palette.accent2 },
   body: { padding: 20, gap: 18 },
   inlineFollowUp: {
     gap: 14,
@@ -620,6 +664,18 @@ const styles = StyleSheet.create({
   },
   optionalLabel: { fontSize: 12.5, color: Palette.neutral700, marginTop: 2 },
   scaleHint: { fontSize: 12.5, color: Palette.neutral700, lineHeight: 18 },
+  nextDetails: { gap: 10, marginTop: 4 },
+  ideaList: { gap: 8 },
+  idea: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Palette.neutral300,
+    backgroundColor: '#FCF7EE',
+  },
+  ideaOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
+  ideaText: { fontSize: 14, color: Palette.text },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,

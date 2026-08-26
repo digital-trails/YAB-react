@@ -1,3 +1,4 @@
+import { Host, Slider as ExpoSlider } from '@expo/ui';
 import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -64,6 +65,42 @@ export function ScaleInput({
           <Text style={styles.scaleEndLabel}>{maxLabel}</Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** A 1–100 slider with a live value, emoji endpoints, and short labels. */
+export function RatingSlider({
+  value,
+  onChange,
+  minEmoji,
+  maxEmoji,
+  minLabel,
+  maxLabel,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  minEmoji: string;
+  maxEmoji: string;
+  minLabel: string;
+  maxLabel: string;
+}) {
+  return (
+    <View style={styles.ratingBlock}>
+      <Text style={styles.ratingValue}>{value}</Text>
+      <Host style={styles.ratingHost} matchContents>
+        <ExpoSlider value={value} min={1} max={100} step={1} onValueChange={onChange} />
+      </Host>
+      <View style={styles.ratingEnds}>
+        <View style={styles.ratingEnd}>
+          <Text style={styles.ratingEmoji}>{minEmoji}</Text>
+          <Text style={styles.scaleEndLabel}>{minLabel}</Text>
+        </View>
+        <View style={styles.ratingEnd}>
+          <Text style={styles.ratingEmoji}>{maxEmoji}</Text>
+          <Text style={[styles.scaleEndLabel, styles.ratingEndRight]}>{maxLabel}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -185,6 +222,18 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 13.5, color: Palette.neutral700, lineHeight: 20 },
 
   scaleBlock: { gap: 8 },
+  ratingBlock: { gap: 8 },
+  ratingValue: {
+    alignSelf: 'center',
+    fontSize: 32,
+    fontWeight: '700',
+    color: Palette.accent2_800,
+  },
+  ratingHost: { width: '100%', minHeight: 36 },
+  ratingEnds: { flexDirection: 'row', justifyContent: 'space-between' },
+  ratingEnd: { alignItems: 'center', gap: 4, maxWidth: '42%' },
+  ratingEndRight: { textAlign: 'right' },
+  ratingEmoji: { fontSize: 26 },
   scaleRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
   scaleDot: {
     flex: 1,
