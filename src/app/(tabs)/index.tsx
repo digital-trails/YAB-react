@@ -2,11 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { DotTexture, Heading } from '@/components/ui';
 import { getModuleCompletions, getModuleDraft, type ModuleCompletion, type ModuleDraft } from '@/data/module-history';
-import { Palette, Radius, Shadow } from '@/constants/tokens';
+import { Palette, Radius, Shadow , themedStyleSheet } from '@/constants/tokens';
 
 const STAT_COLORS = [Palette.accent700, Palette.accent2_700, Palette.neutral800];
 
@@ -110,7 +110,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   scroll: { flex: 1, backgroundColor: Palette.bg },
   content: {
     paddingHorizontal: 20,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 24 },
   statCaption: { fontSize: 11.5, color: Palette.neutral700 },
-});
+}));
 
 function calculateStreak(completions: ModuleCompletion[]) {
   const days = new Set(completions.map((entry) => entry.completedAt.slice(0, 10)));

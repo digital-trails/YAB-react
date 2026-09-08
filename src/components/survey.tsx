@@ -1,9 +1,9 @@
 import { Host, Slider as ExpoSlider } from '@expo/ui';
 import { type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { Heading } from '@/components/ui';
-import { Palette, Radius, Shadow } from '@/constants/tokens';
+import { Palette, Radius, Shadow , themedStyleSheet } from '@/constants/tokens';
 
 /** Question header: kicker + title + optional helper/subtitle. */
 export function QuestionHeader({
@@ -213,7 +213,7 @@ export function InfoNote({ children }: { children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   headerBlock: { gap: 8 },
   kicker: {
     fontSize: 11,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  scaleDotOff: { backgroundColor: '#FCF7EE', borderColor: Palette.neutral300 },
+  scaleDotOff: { backgroundColor: Palette.neutral100, borderColor: Palette.neutral300 },
   scaleDotOn: { backgroundColor: Palette.accent2, borderColor: Palette.accent2 },
   scaleEmoji: { fontSize: 22 },
   scaleNum: { fontSize: 15, fontWeight: '700', color: Palette.neutral700 },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Palette.neutral300,
-    backgroundColor: '#FCF7EE',
+    backgroundColor: Palette.neutral100,
   },
   optionOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
   optionText: { flex: 1, fontSize: 14.5, color: Palette.text },
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     borderWidth: 1,
     borderColor: Palette.neutral300,
-    backgroundColor: '#FCF7EE',
+    backgroundColor: Palette.neutral100,
     padding: 14,
     fontSize: 14.5,
     color: Palette.text,
@@ -324,4 +324,4 @@ const styles = StyleSheet.create({
     boxShadow: Shadow.elevSm,
   },
   infoText: { fontSize: 13, color: Palette.accent2_800, lineHeight: 19 },
-});
+}));

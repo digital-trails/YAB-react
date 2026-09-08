@@ -1,10 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
-import { Palette, Radius } from '@/constants/tokens';
+import { Palette, Radius , themedStyleSheet } from '@/constants/tokens';
 import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const thought = '"Maybe they like each other more than me."';
@@ -121,11 +121,11 @@ function Scale({ value, onChange, min, max }: { value: number | null; onChange: 
   return <View style={styles.scale}><View style={styles.scaleRow}>{[1, 2, 3, 4, 5, 6, 7].map((number) => <Pressable key={number} onPress={() => onChange(number)} style={[styles.scaleItem, value === number && styles.scaleSelected]}><Text style={[styles.scaleText, value === number && styles.scaleTextSelected]}>{number}</Text></Pressable>)}</View><View style={styles.scaleLabels}><Text style={styles.muted}>{min}</Text><Text style={styles.muted}>{max}</Text></View></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   screen: { flex: 1, backgroundColor: Palette.bg },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },
   back: { color: Palette.neutral700, fontSize: 34, lineHeight: 28 }, close: { color: Palette.neutral700, fontSize: 30, lineHeight: 28 }, headerTitle: { fontSize: 20, color: Palette.text },
   content: { padding: 20, gap: 18, paddingBottom: 40 },
   illustration: { height: 130, borderRadius: Radius.xl, backgroundColor: Palette.accent2_100, alignItems: 'center', justifyContent: 'center' }, star: { position: 'absolute', top: 18, left: 45, fontSize: 26, color: Palette.accent700 }, moon: { fontSize: 72, color: Palette.accent2_700 }, sparkle: { position: 'absolute', right: 48, bottom: 18, fontSize: 30, color: Palette.accent },
   summary: { backgroundColor: Palette.neutral200, borderRadius: Radius.lg, padding: 16, borderWidth: 1, borderColor: Palette.accent2_200 }, body: { fontSize: 15, lineHeight: 23, color: Palette.text }, strong: { fontWeight: '700' }, muted: { color: Palette.neutral700, fontSize: 14, lineHeight: 20 }, kicker: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }, questionBlock: { gap: 14 }, question: { fontSize: 22, lineHeight: 28, color: Palette.text }, options: { flexDirection: 'row', gap: 8 }, option: { flex: 1, alignItems: 'center', paddingVertical: 13, borderRadius: Radius.sm, borderWidth: 1, borderColor: Palette.neutral300, backgroundColor: Palette.neutral100 }, optionSelected: { borderColor: Palette.accent2_700, backgroundColor: Palette.accent2_100 }, optionText: { fontSize: 13, fontWeight: '700', color: Palette.text }, optionTextSelected: { color: Palette.accent2_800 }, explanation: { fontSize: 15, lineHeight: 23, color: Palette.text }, emphasis: { fontWeight: '700', fontStyle: 'italic' }, fieldGroup: { gap: 8 }, label: { fontSize: 14, lineHeight: 20, color: Palette.text, fontWeight: '600' }, input: { minHeight: 68, borderRadius: Radius.lg, borderWidth: 1, borderColor: Palette.neutral300, backgroundColor: Palette.neutral100, padding: 12, color: Palette.text, textAlignVertical: 'top' }, scale: { gap: 8 }, scaleRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 }, scaleItem: { flex: 1, aspectRatio: 1, maxWidth: 48, borderRadius: Radius.pill, borderWidth: 1, borderColor: Palette.neutral300, backgroundColor: Palette.neutral100, alignItems: 'center', justifyContent: 'center' }, scaleSelected: { backgroundColor: Palette.accent2, borderColor: Palette.accent2 }, scaleText: { color: Palette.text, fontWeight: '700' }, scaleTextSelected: { color: Palette.bg }, scaleLabels: { flexDirection: 'row', justifyContent: 'space-between' }, source: { color: Palette.neutral600, fontSize: 11, lineHeight: 16 }, footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: Palette.neutral300 }, disabled: { opacity: 0.35 },
-});
+}));

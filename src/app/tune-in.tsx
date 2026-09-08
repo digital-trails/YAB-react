@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -24,7 +23,7 @@ import {
   TextField,
 } from '@/components/survey';
 import { Btn, Heading } from '@/components/ui';
-import { Palette } from '@/constants/tokens';
+import { Palette , themedStyleSheet } from '@/constants/tokens';
 import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
@@ -652,7 +651,7 @@ export default function TuneInSurvey() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   screen: { flex: 1, backgroundColor: Palette.bg },
   flex: { flex: 1 },
   header: {
@@ -689,7 +688,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: Palette.neutral300,
-    backgroundColor: '#FCF7EE',
+    backgroundColor: Palette.neutral100,
   },
   ideaOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
   ideaText: { fontSize: 14, color: Palette.text },
@@ -713,4 +712,4 @@ const styles = StyleSheet.create({
   doneTitle: { fontSize: 24, color: Palette.text, textAlign: 'center' },
   doneBody: { fontSize: 14, color: Palette.neutral700, textAlign: 'center', lineHeight: 21 },
   terminalActions: { alignSelf: 'stretch', gap: 10, marginTop: 12 },
-});
+}));

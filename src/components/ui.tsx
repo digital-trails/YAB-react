@@ -2,7 +2,6 @@ import { type ReactNode } from 'react';
 import {
   Pressable,
   type PressableProps,
-  StyleSheet,
   Text,
   type TextProps,
   type TextStyle,
@@ -10,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { HeadingFont, Palette, Radius } from '@/constants/tokens';
+import { HeadingFont, Palette, Radius , themedStyleSheet } from '@/constants/tokens';
 
 /** Display heading in Caprasimo (`--font-heading`). */
 export function Heading({ style, ...rest }: TextProps) {
@@ -39,11 +38,11 @@ export function Btn({ label, variant = 'primary', alignStart, style, ...rest }: 
       style={(state) => [
         styles.btn,
         alignStart ? styles.btnStart : styles.btnCenter,
-        variantStyles[variant],
+        variantStyles(variant),
         state.pressed && styles.btnPressed,
         typeof style === 'function' ? style(state) : style,
       ]}>
-      <Text style={[styles.btnLabel, variantLabel[variant]]}>{label}</Text>
+      <Text style={[styles.btnLabel, variantLabel(variant)]}>{label}</Text>
     </Pressable>
   );
 }
@@ -82,19 +81,19 @@ export function DotTexture({ color, count = 180 }: { color: string; count?: numb
   );
 }
 
-const variantStyles: Record<BtnVariant, ViewStyle> = {
-  primary: { backgroundColor: Palette.accent2_700 },
-  secondary: { backgroundColor: Palette.bg },
-  ghost: { backgroundColor: 'transparent', borderWidth: 1, borderColor: Palette.neutral300 },
-};
+function variantStyles(variant: BtnVariant): ViewStyle {
+  if (variant === 'primary') return { backgroundColor: Palette.accent2_700 };
+  if (variant === 'secondary') return { backgroundColor: Palette.bg };
+  return { backgroundColor: 'transparent', borderWidth: 1, borderColor: Palette.neutral300 };
+}
 
-const variantLabel: Record<BtnVariant, TextStyle> = {
-  primary: { color: Palette.bg },
-  secondary: { color: Palette.accent2_700 },
-  ghost: { color: Palette.accent2_700 },
-};
+function variantLabel(variant: BtnVariant): TextStyle {
+  if (variant === 'primary') return { color: Palette.bg };
+  if (variant === 'secondary') return { color: Palette.accent2_700 };
+  return { color: Palette.accent2_700 };
+}
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   heading: {
     fontFamily: HeadingFont,
     color: Palette.text,
@@ -140,4 +139,4 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 1.5,
   },
-});
+}));

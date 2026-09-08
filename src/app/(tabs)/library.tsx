@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 
 import { Btn, Heading } from '@/components/ui';
-import { Palette, Radius, Shadow } from '@/constants/tokens';
+import { Palette, Radius, Shadow , themedStyleSheet } from '@/constants/tokens';
 
 export default function LibraryScreen() {
   const router = useRouter();
@@ -42,7 +42,7 @@ function LibraryCard({ title, body, onPress }: { title: string; body: string; on
   return <View style={styles.card}><View style={styles.cardCopy}><Heading style={styles.cardTitle}>{title}</Heading><Text style={styles.cardBody}>{body}</Text></View><Btn label="Open" onPress={onPress} /></View>;
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   scroll: { flex: 1, backgroundColor: Palette.bg },
   content: { padding: 20, paddingTop: 14, paddingBottom: 30, gap: 22 },
   title: { fontSize: 28, color: Palette.text },
@@ -53,4 +53,4 @@ const styles = StyleSheet.create({
   cardCopy: { flex: 1, gap: 5 },
   cardTitle: { fontSize: 19, color: Palette.text },
   cardBody: { color: Palette.neutral700, fontSize: 13, lineHeight: 19 },
-});
+}));

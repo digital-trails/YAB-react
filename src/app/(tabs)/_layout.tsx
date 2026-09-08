@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs, TabList, TabSlot, TabTrigger, type TabTriggerSlotProps } from 'expo-router/ui';
 import { forwardRef, type Ref } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 // On web the headless `expo-router/ui` Tabs wrap each screen in a
 // `flexShrink: 0` container, so the screen grows to its content height and the
@@ -10,7 +10,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 const webSlotStyle =
   Platform.OS === 'web' ? ({ flex: 1, minHeight: 0, overflowY: 'auto' } as const) : undefined;
 
-import { Palette, Radius } from '@/constants/tokens';
+import { Palette, Radius , themedStyleSheet } from '@/constants/tokens';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -62,7 +62,7 @@ export default function TabsLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   bar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -89,4 +89,4 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-});
+}));

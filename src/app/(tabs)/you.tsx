@@ -1,11 +1,12 @@
-import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Pressable, Platform, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { DateTimePicker } from '@expo/ui/community/datetime-picker';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Platform, Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { Btn, Heading } from '@/components/ui';
+import { Palette, Radius, Shadow, themedStyleSheet } from '@/constants/tokens';
 import { getModuleCompletions, type ModuleCompletion } from '@/data/module-history';
-import { Palette, Radius, Shadow } from '@/constants/tokens';
 
 const WEEK_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
@@ -15,6 +16,7 @@ type Range = 7 | 30 | 'custom';
 type DateRange = { start: Date; end: Date };
 
 export default function YouScreen() {
+  const router = useRouter();
   const [range, setRange] = useState<Range>(7);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
   const [activity, setActivity] = useState<ModuleCompletion[]>([]);
@@ -47,8 +49,8 @@ export default function YouScreen() {
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.avatar}><Heading style={styles.avatarLetter}>M</Heading></View>
-        <Heading style={styles.name}>Maya</Heading>
-        <Text style={styles.summary}>{streak} day streak · {activity.length} {activity.length === 1 ? 'session' : 'sessions'}</Text>
+        <View style={styles.headerCopy}><Heading style={styles.name}>Maya</Heading><Text style={styles.summary}>{streak} day streak · {activity.length} {activity.length === 1 ? 'session' : 'sessions'}</Text></View>
+        <Pressable accessibilityLabel="Settings" onPress={() => router.push('/settings')} hitSlop={10} style={styles.settingsButton}><Ionicons name="settings-outline" size={22} color={Palette.neutral700} /></Pressable>
       </View>
       <View style={styles.divider} />
       <StreakCard activityDays={days} currentRun={streak} />
@@ -100,10 +102,17 @@ function Patterns({ range, window, customRange, onRangeChange, onCustomRangeChan
     <DomainCard key="domain" activity={checkIns} />,
     <FrequencyCard key="frequency" activity={checkIns} />,
   ];
+  const tabs = [
+    { label: 'Mood', icon: 'happy-outline' as const, color: Palette.accent2_700 },
+    { label: 'Pattern', icon: 'git-compare-outline' as const, color: Palette.accent700 },
+    { label: 'Time', icon: 'time-outline' as const, color: Palette.accent2_700 },
+    { label: 'Topics', icon: 'sparkles-outline' as const, color: Palette.accent700 },
+    { label: 'Frequency', icon: 'stats-chart-outline' as const, color: Palette.accent2_700 },
+  ];
   const goToPage = (nextPage: number) => {
     const boundedPage = Math.max(0, Math.min(cards.length - 1, nextPage));
     setPage(boundedPage);
-    carouselRef.current?.scrollTo({ x: boundedPage * pageWidth, animated: true });
+    carouselRef.current?.scrollTo({ x: boundedPage * pageWidth, animated: false });
   };
 
   return <View style={styles.patternsSection}>
@@ -117,6 +126,7 @@ function Patterns({ range, window, customRange, onRangeChange, onCustomRangeChan
       onLayout={(event) => setPageWidth(event.nativeEvent.layout.width)}
       onScroll={(event) => setPage(Math.round(event.nativeEvent.contentOffset.x / pageWidth))}
       style={[styles.carousel, pageHeight ? { height: pageHeight } : null]}
+      contentContainerStyle={styles.carouselContent}
     >
       {cards.map((card, index) => <View
         key={index}
@@ -127,10 +137,20 @@ function Patterns({ range, window, customRange, onRangeChange, onCustomRangeChan
         style={[styles.carouselPage, { width: pageWidth }]}
       >{card}</View>)}
     </ScrollView>
-    <View style={styles.carouselControls}>
-      <Pressable onPress={() => goToPage(page - 1)} disabled={page === 0} hitSlop={10} style={styles.carouselArrow}><Text style={page === 0 ? styles.disabledArrow : styles.arrow}>‹</Text></Pressable>
-      <View style={styles.dots}>{cards.map((_, index) => <Pressable key={index} onPress={() => goToPage(index)} hitSlop={8} style={[styles.dot, index === page && styles.activeDot]} />)}</View>
-      <Pressable onPress={() => goToPage(page + 1)} disabled={page === cards.length - 1} hitSlop={10} style={styles.carouselArrow}><Text style={page === cards.length - 1 ? styles.disabledArrow : styles.arrow}>›</Text></Pressable>
+    <View style={styles.patternTabs}>
+      {tabs.map((tab, index) => <Pressable
+        key={tab.label}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: page === index }}
+        accessibilityLabel={`${tab.label} pattern`}
+        onPress={() => goToPage(index)}
+        style={[styles.patternTab, page === index && styles.patternTabActive]}
+      >
+        <View style={[styles.patternTabImage, { backgroundColor: page === index ? tab.color : Palette.neutral200, borderWidth: page === index ? 2 : 0, borderColor: page === index ? Palette.bg : 'transparent' }]}>
+          <Ionicons name={tab.icon} size={22} color={page === index ? Palette.bg : tab.color} />
+        </View>
+        <Text style={[styles.patternTabLabel, page === index && styles.patternTabLabelActive]}>{tab.label}</Text>
+      </Pressable>)}
     </View>
   </View>;
 }
@@ -476,10 +496,12 @@ function calculateStreak(days: Set<string>) {
   return streak;
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   scroll: { flex: 1, backgroundColor: Palette.bg },
   content: { padding: 20, paddingTop: 14, paddingBottom: 40, gap: 20 },
-  header: { alignItems: 'center', gap: 5, paddingTop: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 8 },
+  headerCopy: { flex: 1, alignItems: 'center', gap: 5 },
+  settingsButton: { padding: 8 },
   avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: Palette.accent2_200, alignItems: 'center', justifyContent: 'center' },
   avatarLetter: { fontSize: 25, color: Palette.accent2_700 },
   name: { fontSize: 23, color: Palette.text },
@@ -497,17 +519,17 @@ const styles = StyleSheet.create({
   weekCheck: { color: Palette.bg, fontWeight: '800' },
   weekLabel: { color: Palette.neutral700, fontSize: 11, fontWeight: '700' },
   weekLabelToday: { color: Palette.text },
-  patternsSection: { gap: 12 },
+  patternsSection: { gap: 10 },
   patternsTitle: { fontSize: 23, color: Palette.text },
   carousel: { marginHorizontal: -20 },
+  carouselContent: { alignItems: 'flex-start' },
   carouselPage: { paddingHorizontal: 20 },
-  carouselControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 14 },
-  carouselArrow: { minWidth: 28, alignItems: 'center' },
-  arrow: { color: Palette.text, fontSize: 28, lineHeight: 28 },
-  disabledArrow: { color: Palette.neutral300, fontSize: 28, lineHeight: 28 },
-  dots: { flexDirection: 'row', gap: 6, alignItems: 'center' },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Palette.neutral300 },
-  activeDot: { width: 18, backgroundColor: Palette.text },
+  patternTabs: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', gap: 3, paddingTop: 0, paddingBottom: 2 },
+  patternTab: { flex: 1, minWidth: 0, alignItems: 'center', gap: 3, paddingVertical: 5, borderRadius: Radius.lg, borderWidth: 1, borderColor: 'transparent' },
+  patternTabActive: { backgroundColor: Palette.accent2_100, borderColor: Palette.accent2_700 },
+  patternTabImage: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  patternTabLabel: { color: Palette.neutral700, fontSize: 9, fontWeight: '700' },
+  patternTabLabelActive: { color: Palette.text },
   rangeToggle: { flexDirection: 'row', alignSelf: 'stretch', backgroundColor: Palette.neutral200, borderRadius: Radius.pill, overflow: 'hidden' },
   rangeOption: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 9, paddingHorizontal: 6 },
   rangeText: { color: Palette.neutral700, fontSize: 12, fontWeight: '700' },
@@ -564,4 +586,4 @@ const styles = StyleSheet.create({
   emptyIcon: { color: Palette.accent2_700, fontSize: 26 },
   emptyTitle: { fontSize: 18, color: Palette.text },
   emptyBody: { color: Palette.neutral700, fontSize: 13, lineHeight: 19, textAlign: 'center' },
-});
+}));
