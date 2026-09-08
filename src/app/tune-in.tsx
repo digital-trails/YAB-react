@@ -184,7 +184,17 @@ export default function TuneInSurvey() {
       moduleId: 'tune-in',
       title: 'Comparison Check',
       body: a.reflection.trim() || (a.affect ? `Felt ${a.affect.toLowerCase()} after comparing.` : undefined),
-      metadata: { mood: a.mood ?? 3 },
+      metadata: {
+        mood: a.mood ?? 3,
+        compared: a.compared === 'Yes' || a.clarifier === 'Yes' || a.clarifier === 'Maybe' ? 1 : 0,
+        affect: a.affect ?? '',
+        platform: a.platforms[0] ?? '',
+        intensity: a.intensity ?? 50,
+        domains: a.domains.join('|'),
+        doing: a.doing.join('|'),
+        target: a.target.join('|'),
+        hour: new Date().getHours(),
+      },
     });
     await clearModuleDraft('tune-in');
     close();
