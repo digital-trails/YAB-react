@@ -25,6 +25,7 @@ import {
 } from '@/components/survey';
 import { Btn, Heading } from '@/components/ui';
 import { Palette } from '@/constants/tokens';
+import { recordModuleCompletion } from '@/data/module-history';
 
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
 
@@ -144,10 +145,6 @@ type Step = {
   key: string;
   content: ReactNode;
   canContinue?: boolean;
-  /** Advance immediately after a single clear selection. */
-  autoAdvance?: boolean;
-  /** Hide navigation while inline follow-ups are being answered. */
-  hideFooter?: boolean;
   /** Terminal steps supply their own actions and hide the Back/Continue nav. */
   terminal?: boolean;
 };
@@ -172,7 +169,15 @@ export default function TuneInSurvey() {
     });
 
   const close = () => router.back();
-  const advanceAfterSelection = () => setStep((currentStep) => currentStep + 1);
+  const finish = async () => {
+    await recordModuleCompletion({
+      moduleId: 'tune-in',
+      title: 'Comparison Check',
+      body: a.reflection.trim() || (a.affect ? `Felt ${a.affect.toLowerCase()} after comparing.` : undefined),
+      metadata: { mood: a.mood ?? 3 },
+    });
+    close();
+  };
   const previousStep = useRef(step);
   const [questionOpacity] = useState(() => new Animated.Value(1));
 
@@ -192,7 +197,6 @@ export default function TuneInSurvey() {
     {
       key: 'kind',
       canContinue: !!a.kind,
-      autoAdvance: true,
       content: (
         <>
           <QuestionHeader
@@ -209,7 +213,6 @@ export default function TuneInSurvey() {
             value={a.kind}
             onChange={(v) => {
               set('kind', v);
-              advanceAfterSelection();
             }}
           />
         </>
@@ -218,7 +221,6 @@ export default function TuneInSurvey() {
     {
       key: 'affect',
       canContinue: !!a.affect,
-      autoAdvance: true,
       content: (
         <>
           <QuestionHeader title="How did you feel about yourself?" />
@@ -227,7 +229,6 @@ export default function TuneInSurvey() {
             value={a.affect}
             onChange={(v) => {
               set('affect', v);
-              advanceAfterSelection();
             }}
           />
           <Text style={styles.optionalLabel}>Optional — why do you think it made you feel that way?</Text>
@@ -447,7 +448,6 @@ export default function TuneInSurvey() {
     {
       key: 'mood',
       canContinue: a.mood !== null,
-      autoAdvance: true,
       content: (
         <>
           <QuestionHeader kicker="Check in" title="How do you feel Maya?" />
@@ -456,7 +456,6 @@ export default function TuneInSurvey() {
             value={a.mood}
             onChange={(v) => {
               set('mood', v);
-              advanceAfterSelection();
             }}
             emojis={MOOD_EMOJIS}
             minLabel="Very bad"
@@ -468,8 +467,6 @@ export default function TuneInSurvey() {
     {
       key: 'compared',
       canContinue: !!a.compared,
-      autoAdvance: true,
-      hideFooter: a.compared === 'Not sure',
       content: (
         <>
           <QuestionHeader title="Did you compare yourself to others on social media today?" />
@@ -480,14 +477,7 @@ export default function TuneInSurvey() {
           <SingleSelect
             options={['Yes', 'No', 'Not sure']}
             value={a.compared}
-            onChange={(v) => {
-              if (v === 'Not sure') {
-                set('compared', v);
-                return;
-              }
-              set('compared', v);
-              advanceAfterSelection();
-            }}
+            onChange={(v) => set('compared', v)}
           />
           {a.compared === 'Not sure' ? (
             <View style={styles.inlineFollowUp}>
@@ -509,7 +499,6 @@ export default function TuneInSurvey() {
                     value={a.relative}
                     onChange={(v) => {
                       set('relative', v);
-                      advanceAfterSelection();
                     }}
                   />
                 </View>
@@ -569,7 +558,7 @@ export default function TuneInSurvey() {
             week.
           </Text>
           <View style={styles.terminalActions}>
-            <Btn label="Done" onPress={close} />
+            <Btn label="Done" onPress={finish} />
           </View>
         </View>
       ),
@@ -620,7 +609,7 @@ export default function TuneInSurvey() {
           </Animated.View>
         </ScrollView>
 
-        {!current.terminal && !current.hideFooter && !current.autoAdvance ? (
+        {!current.terminal ? (
           <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
             <Btn
               label={isLast ? 'Finish' : 'Continue'}

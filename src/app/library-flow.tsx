@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
+import { recordModuleCompletion } from '@/data/module-history';
 
 const thought = '"Maybe they like each other more than me."';
 const checks = [
@@ -26,6 +27,14 @@ export default function LibraryFlowScreen() {
 
   const canContinue = step === 0 ? !!answer : step === 1 ? true : !!belief && !!helpful;
   const next = () => setStep((value) => Math.min(value + 1, 2));
+  const finish = async () => {
+    await recordModuleCompletion({
+      moduleId: 'thoughts',
+      title: 'My Thoughts',
+      body: responses.find((response) => response.trim()) || 'Looked at a difficult thought another way.',
+    });
+    router.back();
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -79,7 +88,7 @@ export default function LibraryFlowScreen() {
         )}
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-        <Btn label={step === 2 ? 'Add to My Library!' : 'Continue'} disabled={!canContinue} onPress={step === 2 ? () => router.back() : next} style={!canContinue ? styles.disabled : undefined} />
+        <Btn label={step === 2 ? 'Add to My Library!' : 'Continue'} disabled={!canContinue} onPress={step === 2 ? finish : next} style={!canContinue ? styles.disabled : undefined} />
       </View>
     </View>
   );

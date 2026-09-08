@@ -1,9 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
+import { recordModuleCompletion } from '@/data/module-history';
 
 const communityPosts = [
   'Muting people for a little bit actually helped way more than I thought.',
@@ -28,18 +30,37 @@ export default function CommunityFlow() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const insets = useSafeAreaInsets();
   const isBoard = section === 'board';
+  const [query, setQuery] = useState('');
+  const [pinned, setPinned] = useState<string[]>([]);
+  const [showComposer, setShowComposer] = useState(false);
+  const [submissionMessage, setSubmissionMessage] = useState(false);
+  const cards = isBoard ? boardPosts.map(([icon, label, body, date]) => ({ icon, label, body, date })) : communityPosts.map((body, index) => ({ icon: '', label: index < 5 ? 'Tips & Advice' : 'Little Reminder', body, date: index < 2 ? `${index + 2}h ago` : 'Yesterday' }));
+  const filteredCards = cards.filter((card) => `${card.label} ${card.body}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => Number(pinned.includes(b.body)) - Number(pinned.includes(a.body)));
+  const togglePin = (body: string) => setPinned((current) => current.includes(body) ? current.filter((item) => item !== body) : [...current, body]);
+  const finish = async () => {
+    await recordModuleCompletion({
+      moduleId: isBoard ? 'board' : 'community',
+      title: isBoard ? 'My Board' : 'Community',
+      body: isBoard ? 'Looked back at things that matter to me.' : 'Spent time connecting with the community.',
+    });
+    router.back();
+  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}><Btn label="‹" variant="ghost" onPress={router.back} /><Heading style={styles.title}>{isBoard ? 'Things that matter to me' : 'Community'}</Heading></View>
       <Text style={styles.subtitle}>{isBoard ? 'Your stuff, all in one place. Wins, reflections, saved thoughts, and things you\'ve shared will show up here.' : 'See what other people are sharing about comparison, what gets to them, what\'s helped, and the things they wish more people talked about.'}</Text>
+      <TextInput value={query} onChangeText={setQuery} placeholder={`Search ${isBoard ? 'your board' : 'suggestions'}…`} placeholderTextColor={Palette.neutral600} style={styles.search} />
       <View style={styles.filters}>{(isBoard ? ['All', 'Proud of', 'Small wins', 'Gratitude', 'Strengths', 'Kindness'] : ['All', 'Tips & Advice', 'Not Just Me', 'Little Reminders']).map((item) => <Text key={item} style={styles.filter}>{item}</Text>)}</View>
+      <Btn label={showComposer ? 'Cancel submission' : isBoard ? 'Create a board post' : 'Submit a suggestion'} variant="ghost" onPress={() => setShowComposer((shown) => !shown)} />
+      {showComposer ? <View style={styles.composer}><Text style={styles.body}>Share something for this board.</Text><TextInput placeholder="Write your submission…" placeholderTextColor={Palette.neutral600} style={styles.composerInput} /><Btn label="Submit for review" onPress={() => { setShowComposer(false); setSubmissionMessage(true); }} /></View> : null}
+      {submissionMessage ? <Text style={styles.reviewNote}>Your submission will be reviewed within 24 hours by admins.</Text> : null}
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {isBoard ? boardPosts.map(([icon, label, body, date]) => <View key={body} style={styles.card}><Text style={styles.icon}>{icon}</Text><Text style={styles.label}>{label}</Text><Text style={styles.body}>{body}</Text><Text style={styles.date}>{date}</Text></View>) : communityPosts.map((post, index) => <View key={post} style={styles.card}><Text style={styles.label}>{index < 5 ? 'Tips & Advice' : 'Little Reminder'}</Text><Text style={styles.body}>{post}</Text><Text style={styles.date}>{index < 2 ? `${index + 2}h ago` : 'Yesterday'}</Text></View>)}
-        <View style={{ height: insets.bottom + 20 }} />
+        {filteredCards.map((card) => <View key={card.body} style={styles.card}><Text style={styles.icon}>{card.icon}</Text><Text style={styles.label}>{card.label}</Text><Text style={styles.body}>{card.body}</Text><Text style={styles.date}>{card.date}</Text><Pressable onPress={() => togglePin(card.body)}><Text style={styles.pin}>{pinned.includes(card.body) ? '📌 Pinned' : 'Pin this'}</Text></Pressable></View>)}
+        <Btn label="Done" onPress={finish} /><View style={{ height: insets.bottom + 20 }} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: Palette.bg, paddingHorizontal: 20 }, list: { paddingTop: 4 }, header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }, title: { fontSize: 22, flex: 1 }, subtitle: { color: Palette.neutral700, fontSize: 14, lineHeight: 20, marginBottom: 14 }, filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }, filter: { color: Palette.accent2_800, backgroundColor: Palette.neutral200, borderRadius: Radius.pill, paddingVertical: 7, paddingHorizontal: 12, fontSize: 12, fontWeight: '700' }, card: { backgroundColor: Palette.neutral100, borderRadius: Radius.lg, borderWidth: 1, borderColor: Palette.neutral300, padding: 15, marginBottom: 10, gap: 6 }, icon: { fontSize: 22 }, label: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700' }, body: { color: Palette.text, fontSize: 14.5, lineHeight: 21 }, date: { color: Palette.neutral600, fontSize: 11 } });
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: Palette.bg, paddingHorizontal: 20 }, list: { paddingTop: 4 }, search: { borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 12, color: Palette.text, marginBottom: 10 }, composer: { gap: 10, padding: 14, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, borderWidth: 1, borderColor: Palette.neutral300 }, composerInput: { minHeight: 80, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.sm, padding: 10, color: Palette.text }, reviewNote: { color: Palette.accent2_700, fontSize: 13, lineHeight: 19 }, pin: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700' }, header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 }, title: { fontSize: 22, flex: 1 }, subtitle: { color: Palette.neutral700, fontSize: 14, lineHeight: 20, marginBottom: 14 }, filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }, filter: { color: Palette.accent2_800, backgroundColor: Palette.neutral200, borderRadius: Radius.pill, paddingVertical: 7, paddingHorizontal: 12, fontSize: 12, fontWeight: '700' }, card: { backgroundColor: Palette.neutral100, borderRadius: Radius.lg, borderWidth: 1, borderColor: Palette.neutral300, padding: 15, marginBottom: 10, gap: 6 }, icon: { fontSize: 22 }, label: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700' }, body: { color: Palette.text, fontSize: 14.5, lineHeight: 21 }, date: { color: Palette.neutral600, fontSize: 11 } });
