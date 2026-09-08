@@ -1,19 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { DotTexture, Heading } from '@/components/ui';
+import { getModuleCompletions, getModuleDraft, type ModuleCompletion, type ModuleDraft } from '@/data/module-history';
 import { Palette, Radius, Shadow } from '@/constants/tokens';
 
-const STATS = [
-  { value: '4', caption: 'day streak', color: Palette.accent700 },
-  { value: '6', caption: 'sessions', color: Palette.accent2_700 },
-  { value: '38', caption: 'min practiced', color: Palette.neutral800 },
-];
+const STAT_COLORS = [Palette.accent700, Palette.accent2_700, Palette.neutral800];
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [stats, setStats] = useState([0, 0, 0]);
+  const [draft, setDraft] = useState<ModuleDraft | null>(null);
+
+  const loadHomeData = useCallback(async () => {
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    const completions = await getModuleCompletions(since);
+    setStats([calculateStreak(completions), completions.length, calculateMinutes(completions)]);
+    setDraft(await getModuleDraft());
+  }, []);
+
+  useFocusEffect(useCallback(() => {
+    void loadHomeData();
+  }, [loadHomeData]));
+
+  const statItems = ['day streak', 'sessions', 'min practiced'].map((caption, index) => ({ value: String(stats[index]), caption, color: STAT_COLORS[index] }));
+  const resume = () => {
+    if (draft) router.push({ pathname: draft.route as never, params: { resume: '1' } });
+  };
 
   return (
     <ScrollView
@@ -64,29 +81,23 @@ export default function HomeScreen() {
       </Pressable>
 
       {/* Pick up where you left off */}
-      <View style={styles.section}>
+      {draft ? <View style={styles.section}>
         <Text style={styles.sectionLabel}>PICK UP WHERE YOU LEFT OFF</Text>
         <View style={styles.pickupCard}>
-          <View style={styles.avatar}>
-            <Heading style={styles.avatarLetter}>N</Heading>
-          </View>
+          <View style={styles.avatar}><Heading style={styles.avatarLetter}>N</Heading></View>
           <View style={styles.pickupBody}>
-            <Text style={styles.pickupTitle}>Understanding comparison</Text>
-            <View style={styles.progressTrack}>
-              <View style={styles.progressFill} />
-            </View>
+            <Text style={styles.pickupTitle}>{draft.title}</Text>
+            <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${Math.round((draft.step / Math.max(draft.totalSteps - 1, 1)) * 100)}%` }]} /></View>
           </View>
-          <Pressable hitSlop={8}>
-            <Text style={styles.resume}>Resume</Text>
-          </Pressable>
+          <Pressable hitSlop={8} onPress={resume}><Text style={styles.resume}>Resume</Text></Pressable>
         </View>
-      </View>
+      </View> : null}
 
       {/* This week */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>THIS WEEK</Text>
         <View style={styles.statsRow}>
-          {STATS.map((stat) => (
+          {statItems.map((stat) => (
             <View key={stat.caption} style={styles.statTile}>
               <DotTexture color={Palette.statDot} />
               <Heading style={[styles.statValue, { color: stat.color }]}>{stat.value}</Heading>
@@ -246,3 +257,18 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 24 },
   statCaption: { fontSize: 11.5, color: Palette.neutral700 },
 });
+
+function calculateStreak(completions: ModuleCompletion[]) {
+  const days = new Set(completions.map((entry) => entry.completedAt.slice(0, 10)));
+  let streak = 0;
+  const date = new Date();
+  while (days.has(date.toISOString().slice(0, 10))) {
+    streak += 1;
+    date.setDate(date.getDate() - 1);
+  }
+  return streak;
+}
+
+function calculateMinutes(completions: ModuleCompletion[]) {
+  return completions.reduce((total, completion) => total + Number(completion.metadata?.durationMinutes ?? 2), 0);
+}

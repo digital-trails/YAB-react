@@ -7,11 +7,22 @@ export type ModuleCompletion = {
   completedAt: string;
 };
 
+export type ModuleDraft = {
+  moduleId: string;
+  title: string;
+  route: string;
+  step: number;
+  totalSteps: number;
+  state?: Record<string, unknown>;
+  updatedAt: string;
+};
+
 type CompletionInput = Omit<ModuleCompletion, 'id' | 'completedAt'> & { completedAt?: string };
 
 type StoredCompletion = Omit<ModuleCompletion, 'id'>;
 
 const STORAGE_KEY = 'yab-module-completions';
+const DRAFT_KEY = 'yab-module-draft';
 let completions: StoredCompletion[] | null = null;
 
 function read(): StoredCompletion[] {
@@ -51,4 +62,24 @@ export async function getModuleCompletions(since?: Date): Promise<ModuleCompleti
     .map((completion, index) => ({ ...completion, id: index + 1 }))
     .filter((completion) => !sinceIso || completion.completedAt >= sinceIso)
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+}
+
+export async function saveModuleDraft(draft: Omit<ModuleDraft, 'updatedAt'>): Promise<void> {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, updatedAt: new Date().toISOString() }));
+}
+
+export async function getModuleDraft(): Promise<ModuleDraft | null> {
+  if (typeof localStorage === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearModuleDraft(moduleId: string): Promise<void> {
+  const draft = await getModuleDraft();
+  if (draft?.moduleId === moduleId && typeof localStorage !== 'undefined') localStorage.removeItem(DRAFT_KEY);
 }

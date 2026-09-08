@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
-import { recordModuleCompletion } from '@/data/module-history';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const values = ['Connection', 'Being Yourself', 'Growth', 'Achievement', 'Health & Well-Being', 'Creativity', 'Independence', 'Kindness', 'Fun', 'Something Else'];
 const patterns = ['Scroll less when I catch myself comparing', 'See less content that makes me compare my appearance', 'Spend less time on TikTok', 'Be more selective about who I follow', 'Something else'];
@@ -13,6 +13,7 @@ const moves = ['Take a 10-minute break', 'Close the app when I catch myself comp
 
 export default function GoalsFlowScreen() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState<'home' | 'values' | 'patterns'>('home');
   const [step, setStep] = useState(0);
@@ -21,16 +22,32 @@ export default function GoalsFlowScreen() {
   const [move, setMove] = useState<string | null>(null);
   const [text, setText] = useState('');
 
+  useEffect(() => {
+    if (resume !== '1') return;
+    void getModuleDraft().then((draft) => {
+      if (!draft || draft.moduleId !== 'goals') return;
+      const state = draft.state as { page?: 'values' | 'patterns'; value?: string | null; choice?: string | null; move?: string | null; text?: string; } | undefined;
+      setStep(draft.step);
+      if (state?.page) setPage(state.page);
+      if (state) { setValue(state.value ?? null); setChoice(state.choice ?? null); setMove(state.move ?? null); setText(state.text ?? ''); }
+    });
+  }, [resume]);
+
   const exit = () => router.back();
   const select = (item: string) => page === 'values' ? setValue(item) : setChoice(item);
   const selected = page === 'values' ? value : choice;
   const next = () => setStep((current) => current + 1);
+  useEffect(() => {
+    if (page !== 'home') void saveModuleDraft({ moduleId: 'goals', title: page === 'values' ? 'My Values' : 'My Patterns', route: '/goals-flow', step, totalSteps: 4, state: { page, value, choice, move, text } });
+  }, [choice, move, page, step, text, value]);
+
   const finish = async () => {
     await recordModuleCompletion({
       moduleId: page === 'values' ? 'values' : 'patterns',
       title: page === 'values' ? 'My Values' : 'My Patterns',
       body: `${selected ?? 'A new goal'}${move ? ` · ${move}` : text ? ` · ${text}` : ''}`,
     });
+    await clearModuleDraft('goals');
     exit();
   };
 

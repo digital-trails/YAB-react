@@ -11,6 +11,16 @@ export type ModuleCompletion = {
   completedAt: string;
 };
 
+export type ModuleDraft = {
+  moduleId: string;
+  title: string;
+  route: string;
+  step: number;
+  totalSteps: number;
+  state?: Record<string, unknown>;
+  updatedAt: string;
+};
+
 type CompletionInput = Omit<ModuleCompletion, 'id' | 'completedAt'> & { completedAt?: string };
 
 const DB_NAME = 'yab-history.db';
@@ -22,6 +32,15 @@ const TABLE_SQL = `
     body TEXT,
     metadata TEXT,
     completed_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS module_drafts (
+    module_id TEXT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    route TEXT NOT NULL,
+    step INTEGER NOT NULL,
+    total_steps INTEGER NOT NULL,
+    state TEXT,
+    updated_at TEXT NOT NULL
   );
 `;
 
@@ -87,4 +106,36 @@ function parseMetadata(value: string): Record<string, string | number | boolean 
   } catch {
     return undefined;
   }
+}
+
+export async function saveModuleDraft(draft: Omit<ModuleDraft, 'updatedAt'>): Promise<void> {
+  const next = { ...draft, updatedAt: new Date().toISOString() };
+  if (Platform.OS === 'web') return;
+  const database = await getDatabase();
+  await database.runAsync(
+    'INSERT OR REPLACE INTO module_drafts (module_id, title, route, step, total_steps, state, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    next.moduleId,
+    next.title,
+    next.route,
+    next.step,
+    next.totalSteps,
+    next.state ? JSON.stringify(next.state) : null,
+    next.updatedAt,
+  );
+}
+
+export async function getModuleDraft(): Promise<ModuleDraft | null> {
+  if (Platform.OS === 'web') return null;
+  const database = await getDatabase();
+  const row = await database.getFirstAsync<{ moduleId: string; title: string; route: string; step: number; totalSteps: number; state?: string; updatedAt: string }>(
+    'SELECT module_id AS moduleId, title, route, step, total_steps AS totalSteps, state, updated_at AS updatedAt FROM module_drafts ORDER BY updated_at DESC LIMIT 1',
+  );
+  if (!row) return null;
+  return { ...row, state: row.state ? JSON.parse(row.state) : undefined };
+}
+
+export async function clearModuleDraft(moduleId: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const database = await getDatabase();
+  await database.runAsync('DELETE FROM module_drafts WHERE module_id = ?', moduleId);
 }

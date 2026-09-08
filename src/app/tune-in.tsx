@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -25,7 +25,7 @@ import {
 } from '@/components/survey';
 import { Btn, Heading } from '@/components/ui';
 import { Palette } from '@/constants/tokens';
-import { recordModuleCompletion } from '@/data/module-history';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
 
@@ -151,10 +151,20 @@ type Step = {
 
 export default function TuneInSurvey() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>(INITIAL);
   const [showNextIdeas, setShowNextIdeas] = useState(false);
+
+  useEffect(() => {
+    if (resume !== '1') return;
+    void getModuleDraft().then((draft) => {
+      if (!draft || draft.moduleId !== 'tune-in') return;
+      setStep(draft.step);
+      if (draft.state) setA(draft.state as Answers);
+    });
+  }, [resume]);
 
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) =>
     setA((prev) => ({ ...prev, [key]: value }));
@@ -176,8 +186,10 @@ export default function TuneInSurvey() {
       body: a.reflection.trim() || (a.affect ? `Felt ${a.affect.toLowerCase()} after comparing.` : undefined),
       metadata: { mood: a.mood ?? 3 },
     });
+    await clearModuleDraft('tune-in');
     close();
   };
+  const saveDraft = () => saveModuleDraft({ moduleId: 'tune-in', title: 'Comparison Check', route: '/tune-in', step, totalSteps: steps.length, state: a });
   const previousStep = useRef(step);
   const [questionOpacity] = useState(() => new Animated.Value(1));
 
@@ -564,6 +576,10 @@ export default function TuneInSurvey() {
       ),
     });
   }
+
+  useEffect(() => {
+    if (step > 0 || a.mood !== null || a.compared !== null) void saveDraft();
+  }, [a.compared, a.mood, step]);
 
   const current = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;

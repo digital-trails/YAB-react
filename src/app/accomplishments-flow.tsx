@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
-import { recordModuleCompletion } from '@/data/module-history';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const keys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('');
 const wins = [
@@ -19,7 +19,7 @@ const words = ['Brave', 'Kind', 'Patient', 'Creative', 'Strong', 'Thoughtful', '
 
 export default function AccomplishmentsFlow() {
   const router = useRouter();
-  const { section } = useLocalSearchParams<{ section?: string }>();
+  const { section, resume } = useLocalSearchParams<{ section?: string; resume?: string }>();
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState<'game' | 'wins' | 'addWin' | 'thanks' | 'thanksAdd' | 'cards' | 'choice'>((section === 'wins' ? 'wins' : section === 'thanks' ? 'thanks' : 'game'));
   const [guess, setGuess] = useState('');
@@ -27,8 +27,23 @@ export default function AccomplishmentsFlow() {
   const [thanks, setThanks] = useState('');
   const [word, setWord] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!resume) return;
+    void getModuleDraft().then((draft) => {
+      if (!draft || draft.moduleId !== 'accomplishments') return;
+      const state = draft.state as { page?: typeof page; guess?: string; win?: string; thanks?: string; word?: string | null } | undefined;
+      if (state?.page) setPage(state.page);
+      if (state) { setGuess(state.guess ?? ''); setWin(state.win ?? ''); setThanks(state.thanks ?? ''); setWord(state.word ?? null); }
+    });
+  }, [resume]);
+
+  useEffect(() => {
+    if (page !== 'game' || guess || win || thanks || word) void saveModuleDraft({ moduleId: 'accomplishments', title: 'Notice the good', route: `/accomplishments-flow?section=${section ?? 'game'}`, step: 0, totalSteps: 1, state: { page, guess, win, thanks, word } });
+  }, [guess, page, section, thanks, win, word]);
+
   const complete = async (moduleId: string, title: string, body?: string) => {
     await recordModuleCompletion({ moduleId, title, body });
+    await clearModuleDraft('accomplishments');
     router.back();
   };
 

@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
-import { recordModuleCompletion } from '@/data/module-history';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const communityPosts = [
   'Muting people for a little bit actually helped way more than I thought.',
@@ -27,13 +27,24 @@ const boardPosts = [
 
 export default function CommunityFlow() {
   const router = useRouter();
-  const { section } = useLocalSearchParams<{ section?: string }>();
+  const { section, resume } = useLocalSearchParams<{ section?: string; resume?: string }>();
   const insets = useSafeAreaInsets();
   const isBoard = section === 'board';
   const [query, setQuery] = useState('');
   const [pinned, setPinned] = useState<string[]>([]);
   const [showComposer, setShowComposer] = useState(false);
   const [submissionMessage, setSubmissionMessage] = useState(false);
+  useEffect(() => {
+    if (resume !== '1') return;
+    void getModuleDraft().then((draft) => {
+      if (draft?.moduleId !== 'community') return;
+      const state = draft.state as { query?: string; pinned?: string[] } | undefined;
+      if (state) { setQuery(state.query ?? ''); setPinned(state.pinned ?? []); }
+    });
+  }, [resume]);
+  useEffect(() => {
+    void saveModuleDraft({ moduleId: 'community', title: isBoard ? 'My Board' : 'Community', route: `/community-flow?section=${section ?? 'community'}`, step: 0, totalSteps: 1, state: { query, pinned } });
+  }, [isBoard, pinned, query, section]);
   const cards = isBoard ? boardPosts.map(([icon, label, body, date]) => ({ icon, label, body, date })) : communityPosts.map((body, index) => ({ icon: '', label: index < 5 ? 'Tips & Advice' : 'Little Reminder', body, date: index < 2 ? `${index + 2}h ago` : 'Yesterday' }));
   const filteredCards = cards.filter((card) => `${card.label} ${card.body}`.toLowerCase().includes(query.toLowerCase())).sort((a, b) => Number(pinned.includes(b.body)) - Number(pinned.includes(a.body)));
   const togglePin = (body: string) => setPinned((current) => current.includes(body) ? current.filter((item) => item !== body) : [...current, body]);
@@ -43,6 +54,7 @@ export default function CommunityFlow() {
       title: isBoard ? 'My Board' : 'Community',
       body: isBoard ? 'Looked back at things that matter to me.' : 'Spent time connecting with the community.',
     });
+    await clearModuleDraft('community');
     router.back();
   };
 

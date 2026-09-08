@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, Heading } from '@/components/ui';
 import { Palette, Radius } from '@/constants/tokens';
-import { recordModuleCompletion } from '@/data/module-history';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const thought = '"Maybe they like each other more than me."';
 const checks = [
@@ -18,6 +18,7 @@ const checks = [
 
 export default function LibraryFlowScreen() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -25,14 +26,36 @@ export default function LibraryFlowScreen() {
   const [belief, setBelief] = useState<number | null>(null);
   const [helpful, setHelpful] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (resume !== '1') return;
+    void getModuleDraft().then((draft) => {
+      if (!draft || draft.moduleId !== 'thoughts') return;
+      setStep(draft.step);
+      const state = draft.state as { answer?: string | null; responses?: string[]; belief?: number | null; helpful?: number | null } | undefined;
+      if (state) {
+        setAnswer(state.answer ?? null);
+        setResponses(state.responses ?? checks.map(() => ''));
+        setBelief(state.belief ?? null);
+        setHelpful(state.helpful ?? null);
+      }
+    });
+  }, [resume]);
+
   const canContinue = step === 0 ? !!answer : step === 1 ? true : !!belief && !!helpful;
   const next = () => setStep((value) => Math.min(value + 1, 2));
+  useEffect(() => {
+    if (step > 0 || answer || responses.some(Boolean) || belief || helpful) {
+      void saveModuleDraft({ moduleId: 'thoughts', title: 'My Thoughts', route: '/library-flow', step, totalSteps: 3, state: { answer, responses, belief, helpful } });
+    }
+  }, [answer, belief, helpful, responses, step]);
+
   const finish = async () => {
     await recordModuleCompletion({
       moduleId: 'thoughts',
       title: 'My Thoughts',
       body: responses.find((response) => response.trim()) || 'Looked at a difficult thought another way.',
     });
+    await clearModuleDraft('thoughts');
     router.back();
   };
 

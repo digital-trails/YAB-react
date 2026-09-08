@@ -67,8 +67,8 @@ function StreakCard({ activityDays, currentRun }: { activityDays: Set<string>; c
   });
 
   return <View style={styles.card}>
-    <Heading style={styles.cardTitle}>{currentRun ? `🔥 ${currentRun} Days in a Row` : 'Ready to start a streak?'}</Heading>
-    <Text style={styles.cardSubtitle}>{currentRun ? 'Keep it up — you&apos;re on a roll!' : 'Complete a module today to begin.'}</Text>
+    <Heading style={styles.cardTitle}>{currentRun ? `🔥 ${currentRun} ${currentRun === 1 ? 'Day' : 'Days'} in a Row` : 'Ready to start a streak?'}</Heading>
+    <Text style={styles.cardSubtitle}>{currentRun ? "Keep it up — you're on a roll!" : 'Complete a module today to begin.'}</Text>
     <View style={styles.weekRow}>{week.map((date, index) => <View key={date} style={styles.weekDayCol}>
       <View style={[styles.weekDot, activityDays.has(date) ? styles.weekDotDone : styles.weekDotEmpty]}>{activityDays.has(date) ? <Text style={styles.weekCheck}>✓</Text> : null}</View>
       <Text style={styles.weekLabel}>{WEEK_LABELS[index]}</Text>
@@ -79,29 +79,51 @@ function StreakCard({ activityDays, currentRun }: { activityDays: Set<string>; c
 function Patterns({ range, customRange, onRangeChange, onCustomRangeChange, activity }: { range: Range; customRange: DateRange | null; onRangeChange: (range: Range) => void; onCustomRangeChange: (range: DateRange | null) => void; activity: ModuleCompletion[] }) {
   const { dates, points } = useMemo(() => buildMoodPoints(range, customRange, activity), [activity, customRange, range]);
   return <View style={styles.patternsSection}>
-    <View style={styles.sectionHeading}><Heading style={styles.patternsTitle}>Your patterns</Heading><View style={styles.rangeToggle}>{([7, 30, 'custom'] as Range[]).map((option) => <Pressable key={option} onPress={() => onRangeChange(option)} style={[styles.rangeOption, range === option && styles.rangeActive]}><Text style={range === option ? styles.rangeActiveText : styles.rangeText}>{option === 'custom' ? 'Calendar' : `${option}d`}</Text></Pressable>)}</View></View>
+    <View style={styles.sectionHeading}><Heading style={styles.patternsTitle}>Your patterns</Heading></View>
+    <View style={styles.rangeToggle}>{([7, 30, 'custom'] as Range[]).map((option) => <Pressable key={option} onPress={() => onRangeChange(option)} style={[styles.rangeOption, range === option && styles.rangeActive]}><Text style={range === option ? styles.rangeActiveText : styles.rangeText}>{option === 'custom' ? 'Dates' : `${option} days`}</Text></Pressable>)}</View>
     {range === 'custom' ? <CustomRangePicker value={customRange} onChange={onCustomRangeChange} /> : null}
     <View style={styles.card}>
       <Heading style={styles.cardTitle}>How You&apos;ve Been Feeling</Heading>
       <Text style={styles.cardSubtitle}>Your mood has been a little more positive this week.</Text>
       <View style={styles.chart}>{points.map((point, index) => <View key={dates[index]} style={styles.chartColumn}><Text style={styles.mood}>{point ? MOOD_EMOJIS[point - 1] : ''}</Text><View style={styles.chartTrack}>{point ? <View style={[styles.chartFill, { height: `${point * 20}%` }]} /> : null}</View><Text style={styles.axisLabel}>{formatChartLabel(dates[index], range, index)}</Text></View>)}</View>
-      {points.every((point) => point === null) ? <Text style={styles.noData}>No mood check-ins in this range yet.</Text> : null}
+      {points.every((point) => point === null) ? <Text style={styles.noData}>No mood check-ins in this range yet. Complete the mood question in Tune In to see your check-ins here.</Text> : null}
     </View>
   </View>;
 }
 
 function buildMoodPoints(range: Range, customRange: DateRange | null, activity: ModuleCompletion[]) {
-  const end = customRange?.end ?? new Date();
-  const start = customRange?.start ?? new Date(end);
-  if (!customRange) start.setDate(end.getDate() - (range === 30 ? 29 : 6));
+  const today = new Date();
+  const end = customRange?.end ?? new Date(today);
+  const start = customRange?.start ?? new Date(today);
+
+  if (!customRange && range === 7) {
+    // The 7-day chart is the current calendar week (Monday–Sunday), not a
+    // rolling seven-day window. This keeps today's check-in under today's label.
+    const day = today.getDay() || 7;
+    start.setDate(today.getDate() - day + 1);
+    end.setDate(start.getDate() + 6);
+  } else if (!customRange) {
+    start.setDate(today.getDate() - 29);
+  }
+
   const dates: string[] = [];
   const cursor = new Date(start);
   while (cursor <= end) {
-    dates.push(cursor.toISOString().slice(0, 10));
+    dates.push(localDateKey(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
-  const byDate = new Map(activity.filter((entry) => entry.metadata?.mood).map((entry) => [entry.completedAt.slice(0, 10), Number(entry.metadata?.mood)]));
+
+  const byDate = new Map(activity.map((entry) => {
+    const mood = Number(entry.metadata?.mood);
+    return [localDateKey(new Date(entry.completedAt)), Number.isInteger(mood) && mood >= 1 && mood <= 5 ? mood : null] as const;
+  }).filter((entry): entry is readonly [string, number] => entry[1] !== null));
   return { dates, points: dates.map((date) => byDate.get(date) ?? null) };
+}
+
+function localDateKey(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function formatChartLabel(date: string, range: Range, index: number) {
@@ -181,8 +203,8 @@ const styles = StyleSheet.create({
   patternsSection: { gap: 12 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   patternsTitle: { fontSize: 23, color: Palette.text },
-  rangeToggle: { flexDirection: 'row', backgroundColor: Palette.neutral200, borderRadius: Radius.pill, overflow: 'hidden' },
-  rangeOption: { fontSize: 12, fontWeight: '700', paddingVertical: 7, paddingHorizontal: 11 },
+  rangeToggle: { flexDirection: 'row', alignSelf: 'stretch', backgroundColor: Palette.neutral200, borderRadius: Radius.pill, overflow: 'hidden' },
+  rangeOption: { flex: 1, alignItems: 'center', fontSize: 12, fontWeight: '700', paddingVertical: 9, paddingHorizontal: 6 },
   rangeText: { color: Palette.neutral700 },
   rangeActive: { backgroundColor: Palette.text, borderRadius: Radius.pill },
   rangeActiveText: { color: Palette.bg },
