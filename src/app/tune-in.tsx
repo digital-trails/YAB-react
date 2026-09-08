@@ -47,6 +47,7 @@ const DOMAINS = [
   'Academic/Work',
   'Relationships/Social Life',
   'Friends',
+  'Sports',
   'Family',
   'Fitness/Body/Weight',
   'Nutrition/Food',
@@ -71,9 +72,11 @@ const DOING = [
 ];
 
 const TARGETS = [
-  'Close friends or family',
+  'Close friends',
+  'Family',
   'Peers/acquaintances',
-  'Influencers/creators/strangers',
+  'Influencers/content creators',
+  'Strangers',
   'Meme accounts',
   'News accounts',
   'Other',
@@ -228,9 +231,9 @@ export default function TuneInSurvey() {
           />
           <SingleSelect
             options={[
-              'Someone had something I wanted',
-              "I had something the other person didn’t.",
-              'We seemed about the same',
+              'I compared myself to others who seemed better off than me.',
+              'I compared myself to others who seemed worse off than me.',
+              'I compared myself to others who seemed similar to me.',
             ]}
             value={a.kind}
             onChange={(v) => {
@@ -245,7 +248,7 @@ export default function TuneInSurvey() {
       canContinue: !!a.affect,
       content: (
         <>
-          <QuestionHeader title="How did you feel about yourself?" />
+          <QuestionHeader title="How did you feel about yourself after making the comparison?" />
           <SingleSelect
             options={['Better', 'Worse', 'No different']}
             value={a.affect}
@@ -287,16 +290,15 @@ export default function TuneInSurvey() {
       canContinue: a.intensity !== null,
       content: (
         <>
-          <QuestionHeader
-            title="When the feeling was strongest, how did the comparison feel?"
-          />
+          <QuestionHeader title="How intense was the comparison?" />
           <RatingSlider
             value={a.intensity ?? 50}
             onChange={(v) => set('intensity', v)}
-            minEmoji="😊"
-            maxEmoji="😔"
-            minLabel="Very positive"
-            maxLabel="Very negative"
+            minEmoji="○"
+            maxEmoji="●"
+            minLabel="Not at all intense"
+            maxLabel="Extremely intense"
+            min={0}
           />
         </>
       ),

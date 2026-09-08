@@ -69,7 +69,7 @@ export function ScaleInput({
   );
 }
 
-/** A 1–100 slider with a live value, emoji endpoints, and short labels. */
+/** A configurable numeric slider with a live value, endpoint glyphs, and short labels. */
 export function RatingSlider({
   value,
   onChange,
@@ -77,6 +77,8 @@ export function RatingSlider({
   maxEmoji,
   minLabel,
   maxLabel,
+  min = 1,
+  max = 100,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -84,12 +86,14 @@ export function RatingSlider({
   maxEmoji: string;
   minLabel: string;
   maxLabel: string;
+  min?: number;
+  max?: number;
 }) {
   return (
     <View style={styles.ratingBlock}>
       <Text style={styles.ratingValue}>{value}</Text>
       <Host style={styles.ratingHost} matchContents>
-        <ExpoSlider value={value} min={1} max={100} step={1} onValueChange={onChange} />
+        <ExpoSlider value={value} min={min} max={max} step={1} onValueChange={onChange} />
       </Host>
       <View style={styles.ratingEnds}>
         <View style={styles.ratingEnd}>
