@@ -23,7 +23,7 @@ import {
   TextField,
 } from '@/components/survey';
 import { Btn, Heading } from '@/components/ui';
-import { Palette , themedStyleSheet } from '@/constants/tokens';
+import { Palette, themedStyleSheet } from '@/constants/tokens';
 import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
@@ -382,7 +382,7 @@ export default function TuneInSurvey() {
       canContinue: a.jIntensity !== null,
       content: (
         <>
-          <QuestionHeader title="How intense were those feelings?" />
+          <QuestionHeader title="How did you feel about yourself after making the comparison?" />
           <RatingSlider
             value={a.jIntensity ?? 50}
             onChange={(v) => set('jIntensity', v)}
