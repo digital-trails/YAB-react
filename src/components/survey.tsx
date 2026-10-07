@@ -248,7 +248,7 @@ const styles = themedStyleSheet(() => ({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  scaleDotOff: { backgroundColor: Palette.neutral100, borderColor: Palette.neutral300 },
+  scaleDotOff: { backgroundColor: Palette.neutral100, borderColor: Palette.neutral300, boxShadow: Shadow.elevSm },
   scaleDotOn: { backgroundColor: Palette.accent2, borderColor: Palette.accent2 },
   scaleEmoji: { fontSize: 22 },
   scaleNum: { fontSize: 15, fontWeight: '700', color: Palette.neutral700 },
@@ -267,8 +267,9 @@ const styles = themedStyleSheet(() => ({
     borderWidth: 1,
     borderColor: Palette.neutral300,
     backgroundColor: Palette.neutral100,
+    boxShadow: Shadow.elevSm,
   },
-  optionOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
+  optionOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg },
   optionText: { flex: 1, fontSize: 14.5, color: Palette.text },
   optionTextOn: { fontWeight: '600', color: Palette.accent2_800 },
   radio: {
@@ -304,6 +305,7 @@ const styles = themedStyleSheet(() => ({
     fontSize: 14.5,
     color: Palette.text,
     textAlignVertical: 'top',
+    boxShadow: Shadow.elevSm,
   },
 
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

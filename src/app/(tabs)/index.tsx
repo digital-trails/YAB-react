@@ -51,14 +51,14 @@ export default function HomeScreen() {
 
       {/* Greeting */}
       <Heading style={styles.greeting} numberOfLines={1}>
-        Good afternoon Maya
+        Good afternoon, Maya
       </Heading>
 
       {/* Quote card */}
       <View style={styles.quoteCard}>
         <View style={styles.quoteCircle} pointerEvents="none" />
         <Text style={styles.quoteText}>&ldquo;Comparison is the thief of joy&rdquo;</Text>
-        <Text style={styles.quoteAuthor}>-Teddy Roosevelt</Text>
+        <Text style={styles.quoteAuthor}>- Teddy Roosevelt</Text>
       </View>
 
       {/* TUNE IN — primary action */}

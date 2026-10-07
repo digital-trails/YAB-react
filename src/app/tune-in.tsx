@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   KeyboardAvoidingView,
@@ -180,7 +180,13 @@ export default function TuneInSurvey() {
       };
     });
 
-  const close = () => router.back();
+  const close = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
   const finish = async () => {
     await recordModuleCompletion({
       moduleId: 'tune-in',
@@ -201,7 +207,6 @@ export default function TuneInSurvey() {
     await clearModuleDraft('tune-in');
     close();
   };
-  const saveDraft = () => saveModuleDraft({ moduleId: 'tune-in', title: 'Comparison Check', route: '/tune-in', step, totalSteps: steps.length, state: a });
   const previousStep = useRef(step);
   const [questionOpacity] = useState(() => new Animated.Value(1));
 
@@ -255,7 +260,7 @@ export default function TuneInSurvey() {
               set('affect', v);
             }}
           />
-          <Text style={styles.optionalLabel}>Optional — why do you think it made you feel that way?</Text>
+          <Text style={styles.optionalLabel}>Optional: why do you think it made you feel that way?</Text>
           <TextField
             value={a.reflection}
             onChange={(v) => set('reflection', v)}
@@ -473,7 +478,7 @@ export default function TuneInSurvey() {
       canContinue: a.mood !== null,
       content: (
         <>
-          <QuestionHeader kicker="Check in" title="How do you feel Maya?" />
+          <QuestionHeader kicker="Check in" title="How do you feel, Maya?" />
           <ScaleInput
             points={5}
             value={a.mood}
@@ -494,8 +499,8 @@ export default function TuneInSurvey() {
         <>
           <QuestionHeader title="Did you compare yourself to others on social media today?" />
           <InfoNote>
-            Social comparison is measuring yourself against someone else — their looks, wins,
-            or life. It&apos;s normal, and noticing it is the first skill.
+            Social comparison is measuring yourself against someone else&apos;s looks, wins, or
+            life. It&apos;s normal, and noticing it is the first skill.
           </InfoNote>
           <SingleSelect
             options={['Yes', 'No', 'Not sure']}
@@ -506,7 +511,7 @@ export default function TuneInSurvey() {
             <View style={styles.inlineFollowUp}>
               <QuestionHeader
                 kicker="No pressure"
-                title="Did something you saw make you think about how you were doing, looking, feeling, or living compared with someone else?"
+                title="Did something you saw make you compare how you look, feel, or live to someone else?"
                 subtitle="It&apos;s okay if you&apos;re still figuring it out."
               />
               <SingleSelect
@@ -549,7 +554,7 @@ export default function TuneInSurvey() {
           <Heading style={styles.doneTitle}>
             {a.compared === 'Not sure' && a.clarifier === 'Still not sure'
               ? "That's okay."
-              : "Great — that's worth noting."}
+              : "Great. That's worth noting."}
           </Heading>
           <Text style={styles.doneBody}>
             {a.compared === 'Not sure' && a.clarifier === 'Still not sure'
@@ -588,9 +593,13 @@ export default function TuneInSurvey() {
     });
   }
 
+  const saveDraft = useCallback(
+    () => saveModuleDraft({ moduleId: 'tune-in', title: 'Comparison Check', route: '/tune-in', step, totalSteps: steps.length, state: a }),
+    [a, step, steps.length],
+  );
   useEffect(() => {
     if (step > 0 || a.mood !== null || a.compared !== null) void saveDraft();
-  }, [a.compared, a.mood, step]);
+  }, [a.compared, a.mood, saveDraft, step]);
 
   const current = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;

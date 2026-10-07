@@ -14,7 +14,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [version, refresh] = useState(0);
+  const [, refresh] = useState(0);
   const [ready, setReady] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   useEffect(() => {
@@ -26,9 +26,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     });
     return () => { unsubscribe(); };
   }, []);
+  // Read outside the memo so these are simple dependency-array expressions;
+  // `refresh` above re-renders this component whenever the theme changes,
+  // which is what keeps these reads fresh.
+  const themeName = getThemeName();
+  const palette = getPalette();
   const value = useMemo(() => ({
-    themeName: getThemeName(),
-    palette: getPalette(),
+    themeName,
+    palette,
     ready,
     needsSetup,
     chooseTheme: (theme: ThemeName) => {
@@ -36,7 +41,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setNeedsSetup(false);
       void saveTheme(theme);
     },
-  }), [needsSetup, ready, version, getThemeName(), getPalette()]);
+  }), [needsSetup, palette, ready, themeName]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

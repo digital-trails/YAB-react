@@ -69,7 +69,7 @@ function StreakCard({ activityDays, currentRun }: { activityDays: Set<string>; c
 
   return <View style={styles.card}>
     <Heading style={styles.cardTitle}>{currentRun ? `🔥 ${currentRun} ${currentRun === 1 ? 'Day' : 'Days'} in a Row` : 'Ready to start a streak?'}</Heading>
-    <Text style={styles.cardSubtitle}>{currentRun ? "Keep it up — you're on a roll!" : 'Complete a module today to begin.'}</Text>
+    <Text style={styles.cardSubtitle}>{currentRun ? "Keep it up, you're on a roll!" : 'Complete a module today to begin.'}</Text>
     <View style={styles.weekRow}>{week.map((date, index) => {
       const done = activityDays.has(date);
       return <View key={date} style={styles.weekDayCol}>

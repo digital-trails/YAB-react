@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Heading } from '@/components/ui';
 import { useAppTheme } from '@/context/theme-context';
 import { THEME_LABELS, THEMES, type ThemeName , themedStyleSheet } from '@/constants/tokens';
-import { Palette, Radius } from '@/constants/tokens';
+import { Palette, Radius, Shadow } from '@/constants/tokens';
 
 const THEME_DESCRIPTIONS: Record<ThemeName, string> = {
   warm: 'Earthy cream, olive, and terracotta tones.',
@@ -51,14 +51,14 @@ const styles = themedStyleSheet(() => ({
   title: { color: Palette.text, fontSize: 28 },
   subtitle: { color: Palette.neutral700, fontSize: 15, lineHeight: 22 },
   options: { gap: 10, marginTop: 8 },
-  option: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 12 },
-  optionSelected: { borderColor: Palette.accent2_700, backgroundColor: Palette.accent2_100 },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 12, boxShadow: Shadow.elevSm },
+  optionSelected: { borderColor: Palette.accent2_700, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg },
   swatch: { width: 48, height: 48, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
   swatchDot: { width: 22, height: 8, borderRadius: Radius.pill },
   optionCopy: { flex: 1, gap: 3 },
   optionTitle: { color: Palette.text, fontSize: 16, fontWeight: '700' },
   optionDescription: { color: Palette.neutral700, fontSize: 12, lineHeight: 17 },
   check: { width: 22, color: Palette.accent2_700, fontSize: 20, fontWeight: '800', textAlign: 'center' },
-  continue: { backgroundColor: Palette.accent2_700, borderRadius: Radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: 8 },
+  continue: { backgroundColor: Palette.accent2_700, borderRadius: Radius.pill, paddingVertical: 14, alignItems: 'center', marginTop: 8, boxShadow: Shadow.lg },
   continueText: { color: Palette.bg, fontSize: 15, fontWeight: '800' },
 }));
