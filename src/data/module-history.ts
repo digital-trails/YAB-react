@@ -99,6 +99,37 @@ export async function getModuleCompletions(since?: Date): Promise<ModuleCompleti
   }));
 }
 
+export async function updateModuleCompletion(
+  id: number,
+  patch: { title?: string; body?: string; metadata?: Record<string, string | number | boolean | null> },
+): Promise<void> {
+  if (Platform.OS === 'web') return;
+
+  const database = await getDatabase();
+  const current = await database.getFirstAsync<{ title: string; body: string | null; metadata: string | null }>(
+    'SELECT title, body, metadata FROM module_completions WHERE id = ?',
+    id,
+  );
+  if (!current) return;
+
+  const title = patch.title ?? current.title;
+  const body = patch.body ?? current.body ?? null;
+  const metadata = patch.metadata ?? (current.metadata ? parseMetadata(current.metadata) : undefined);
+  await database.runAsync(
+    'UPDATE module_completions SET title = ?, body = ?, metadata = ? WHERE id = ?',
+    title,
+    body,
+    metadata ? JSON.stringify(metadata) : null,
+    id,
+  );
+}
+
+export async function deleteModuleCompletion(id: number): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const database = await getDatabase();
+  await database.runAsync('DELETE FROM module_completions WHERE id = ?', id);
+}
+
 function parseMetadata(value: string): Record<string, string | number | boolean | null> | undefined {
   try {
     const parsed = JSON.parse(value);
