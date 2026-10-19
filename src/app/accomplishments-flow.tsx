@@ -152,11 +152,6 @@ function pickRandomWords(pool: string[], count: number): string[] {
   return shuffleWords(pool).slice(0, count);
 }
 
-function pickWordPair(pool: string[]): [string, string] {
-  const [first, second] = shuffleWords(pool);
-  return [first, second];
-}
-
 const GRATITUDE_PROMPTS: { label: string; question: string }[] = [
   { label: 'Someone', question: "Who's someone you're glad to have in your life right now?" },
   { label: 'Something small', question: "What's one little thing that made today better?" },
@@ -182,7 +177,7 @@ export default function AccomplishmentsFlow() {
   const router = useRouter();
   const { section, resume } = useLocalSearchParams<{ section?: string; resume?: string }>();
   const insets = useSafeAreaInsets();
-  const [page, setPage] = useState<'game' | 'wins' | 'addWin' | 'thanks' | 'thanksAdd' | 'cards' | 'cardsReflect' | 'choice' | 'choiceReflect' | 'browseByDate' | 'futureWins'>((section === 'wins' ? 'wins' : section === 'thanks' ? 'thanks' : 'game'));
+  const [page, setPage] = useState<'game' | 'wins' | 'addWin' | 'thanks' | 'thanksAdd' | 'cards' | 'cardsReflect' | 'browseByDate' | 'futureWins'>((section === 'wins' ? 'wins' : section === 'thanks' ? 'thanks' : 'game'));
   const [win, setWin] = useState('');
   const [winCategory, setWinCategory] = useState<WinSize | null>(null);
   const [winsList, setWinsList] = useState<Win[]>(initialWins);
@@ -199,8 +194,6 @@ export default function AccomplishmentsFlow() {
   const [showGratitudeIdeas, setShowGratitudeIdeas] = useState(false);
   const [cardWords, setCardWords] = useState<string[]>(() => pickRandomWords(words, CARD_COUNT));
   const [word, setWord] = useState<string | null>(null);
-  const [choicePair, setChoicePair] = useState<[string, string]>(() => pickWordPair(words));
-  const [choiceWord, setChoiceWord] = useState<string | null>(null);
   const [appreciationText, setAppreciationText] = useState('');
 
   const [targetWord] = useState(() => getTodayWord());
@@ -218,7 +211,7 @@ export default function AccomplishmentsFlow() {
     void getModuleDraft().then((draft) => {
       if (!draft || draft.moduleId !== 'accomplishments') return;
       const state = draft.state as {
-        page?: typeof page; win?: string; thanks?: string; word?: string | null; choiceWord?: string | null; appreciationText?: string;
+        page?: typeof page; win?: string; thanks?: string; word?: string | null; appreciationText?: string;
         guesses?: string[]; currentGuess?: string; gamePhase?: GamePhase; wordleWon?: boolean | null; reflectionText?: string;
       } | undefined;
       if (state?.page) setPage(state.page);
@@ -226,7 +219,6 @@ export default function AccomplishmentsFlow() {
         setWin(state.win ?? '');
         setThanks(state.thanks ?? '');
         setWord(state.word ?? null);
-        setChoiceWord(state.choiceWord ?? null);
         setAppreciationText(state.appreciationText ?? '');
         setGuesses(state.guesses ?? []);
         setCurrentGuess(state.currentGuess ?? '');
@@ -246,9 +238,9 @@ export default function AccomplishmentsFlow() {
       route: `/accomplishments-flow?section=${section ?? 'game'}`,
       step: 0,
       totalSteps: 1,
-      state: { page, win, thanks, word, choiceWord, appreciationText, guesses, currentGuess, gamePhase, wordleWon, reflectionText },
+      state: { page, win, thanks, word, appreciationText, guesses, currentGuess, gamePhase, wordleWon, reflectionText },
     });
-  }, [appreciationText, choiceWord, currentGuess, gamePhase, guesses, page, reflectionText, section, thanks, win, word, wordleWon]);
+  }, [appreciationText, currentGuess, gamePhase, guesses, page, reflectionText, section, thanks, win, word, wordleWon]);
 
   const goBack = () => {
     if (router.canGoBack()) {
@@ -266,9 +258,8 @@ export default function AccomplishmentsFlow() {
 
   const back = () => {
     if (page === 'addWin' || page === 'browseByDate' || page === 'futureWins') setPage('wins');
-    else if (page === 'thanksAdd' || page === 'cards' || page === 'choice') setPage('thanks');
+    else if (page === 'thanksAdd' || page === 'cards') setPage('thanks');
     else if (page === 'cardsReflect') setPage('cards');
-    else if (page === 'choiceReflect') setPage('choice');
     else goBack();
   };
   const shell = (title: string, children: ReactNode) => <Shell title={title} onBack={back} insets={insets}>{children}</Shell>;
@@ -540,7 +531,7 @@ export default function AccomplishmentsFlow() {
     ) : null}
     <Btn label="Add my win" disabled={!win.trim() || !winCategory} onPress={addWin} />
   </>);
-  if (page === 'thanks') return shell('🙏 My Thanks', <><Text style={styles.privacy}>🔒 This is just for you.</Text><View style={styles.card}><Text style={styles.icon}>💛</Text><Heading style={styles.cardTitle}>Something I&apos;m Thankful For</Heading><Text style={styles.body}>Taking a second to notice the good stuff, big or small, can help you appreciate what&apos;s already around you.</Text><Btn label="Start" onPress={() => setPage('thanksAdd')} /></View><View style={styles.card}><Text style={styles.icon}>🃏</Text><Heading style={styles.cardTitle}>Something I Appreciate About Myself</Heading><Text style={styles.body}>Version A: shuffle positive words until one feels like you.</Text><Btn label="Start" onPress={() => setPage('cards')} /></View><View style={styles.card}><Text style={styles.icon}>⚡</Text><Heading style={styles.cardTitle}>Something I Appreciate About Myself</Heading><Text style={styles.body}>Version B: pick between two words, shuffle for more.</Text><Btn label="Start" onPress={() => setPage('choice')} /></View></>);
+  if (page === 'thanks') return shell('🙏 My Thanks', <><Text style={styles.privacy}>🔒 This is just for you.</Text><View style={styles.card}><Text style={styles.icon}>💛</Text><Heading style={styles.cardTitle}>Something I&apos;m Thankful For</Heading><Text style={styles.body}>Taking a second to notice the good stuff, big or small, can help you appreciate what&apos;s already around you.</Text><Btn label="Start" onPress={() => setPage('thanksAdd')} /></View><View style={styles.card}><Text style={styles.icon}>🃏</Text><Heading style={styles.cardTitle}>Something I Appreciate About Myself</Heading><Text style={styles.body}>Shuffle positive words until one feels like you.</Text><Btn label="Start" onPress={() => setPage('cards')} /></View></>);
   if (page === 'thanksAdd') return shell('My Thanks', <>
     <Text style={styles.icon}>💛</Text>
     <Heading style={styles.question}>Something I&apos;m Thankful For</Heading>
@@ -583,34 +574,11 @@ export default function AccomplishmentsFlow() {
       onPress={() => { setAppreciationText(word ? `I appreciate that I am ${word} because ` : ''); setPage('cardsReflect'); }}
     />
   </>);
-  if (page === 'cardsReflect') return shell('My Thanks', <SelfAppreciationReflect
+  return shell('My Thanks', <SelfAppreciationReflect
     word={word}
     text={appreciationText}
     onChangeText={setAppreciationText}
     onSave={() => complete('self-appreciation', 'Something I Appreciate About Myself', appreciationText.trim(), { word: word ?? '' })}
-  />);
-  if (page === 'choice') return shell('My Thanks', <>
-    <Heading style={styles.question}>Something I Appreciate About Myself</Heading>
-    <Text style={styles.body}>Choose the word that feels most like you.</Text>
-    <View style={styles.choices}>
-      {choicePair.map((item) => (
-        <Pressable key={item} onPress={() => setChoiceWord(item)} style={[styles.choice, choiceWord === item && styles.choiceOn]}>
-          <Text style={styles.body}>{item}</Text>
-        </Pressable>
-      ))}
-    </View>
-    <Btn label="Shuffle / Try different words" variant="ghost" onPress={() => { setChoicePair(pickWordPair(words)); setChoiceWord(null); }} />
-    <Btn
-      label="Continue"
-      disabled={!choiceWord}
-      onPress={() => { setAppreciationText(choiceWord ? `I appreciate that I am ${choiceWord} because ` : ''); setPage('choiceReflect'); }}
-    />
-  </>);
-  return shell('My Thanks', <SelfAppreciationReflect
-    word={choiceWord}
-    text={appreciationText}
-    onChangeText={setAppreciationText}
-    onSave={() => complete('self-appreciation', 'Something I Appreciate About Myself', appreciationText.trim(), { word: choiceWord ?? '' })}
   />);
 }
 
