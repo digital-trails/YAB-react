@@ -20,6 +20,7 @@ export default function LibraryScreen() {
       <Section title="Reflect">
         <LibraryCard title="My Thoughts" body="Slow down a comparison and look at it another way." onPress={() => router.push('/library-flow' as never)} />
         <LibraryCard title="My Goals" body="Choose what matters and take one small step toward it." onPress={() => router.push('/goals-flow' as never)} />
+        <LibraryCard title="My Reality" body="See how much your feed might be leaving out." onPress={() => router.push('/reality-flow' as never)} />
       </Section>
       <Section title="Notice the good">
         <LibraryCard title="I’m Doing It" body="Guess today’s positive word and remember when you showed it." onPress={() => router.push('/accomplishments-flow?section=game' as never)} />
