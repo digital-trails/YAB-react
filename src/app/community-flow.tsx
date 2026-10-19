@@ -1,10 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Btn, FlowHeader, Heading } from '@/components/ui';
-import { MonsterAvatar } from '@/components/monster-avatar';
 import { Palette, Radius, Shadow, themedStyleSheet } from '@/constants/tokens';
 import {
   clearModuleDraft,
@@ -19,13 +19,10 @@ import {
 import { getCommunityState, saveCommunityState } from '@/data/community-data';
 import {
   BOARD_FILTERS,
-  CATEGORY_BADGE_COLORS,
   CATEGORY_LABEL,
   CHANNEL_EMOJIS,
   COMM_CATEGORIES,
   COMM_FILTERS,
-  MY_AVATAR_ID,
-  NOTE_COLORS,
   NOTE_COLOR_ORDER,
   NOTE_ICONS,
   PROMPTS,
@@ -34,10 +31,31 @@ import {
   interleaveByCategory,
   type CommCategory,
   type CommPost,
-  type MediaType,
   type MyChannel,
   type NoteColor,
 } from '@/data/community-content';
+
+// Every note/category color resolves to the app's own token palette (not
+// hardcoded hex values) so it adapts across every app theme.
+function noteColorTokens(color: NoteColor): { bg: string; border: string } {
+  switch (color) {
+    case 'peach': return { bg: Palette.accent200, border: Palette.accent700 };
+    case 'mint': return { bg: Palette.accent2_100, border: Palette.accent2_200 };
+    case 'lavender': return { bg: Palette.accent2_200, border: Palette.accent2_700 };
+    case 'sky': return { bg: Palette.neutral200, border: Palette.neutral300 };
+    case 'yellow':
+    default: return { bg: Palette.accent100, border: Palette.accent200 };
+  }
+}
+
+function categoryBadgeTokens(category: CommCategory): { bg: string; text: string } {
+  switch (category) {
+    case 'notjustme': return { bg: Palette.accent100, text: Palette.accent700 };
+    case 'reminders': return { bg: Palette.neutral200, text: Palette.neutral700 };
+    case 'tips':
+    default: return { bg: Palette.accent2_100, text: Palette.accent2_700 };
+  }
+}
 
 // Which legacy module completions also show up on "My Board", read-only.
 const BOARD_MODULES: Record<string, { icon: string; label: string; filterId?: string }> = {
@@ -97,7 +115,6 @@ export default function CommunityFlow() {
   const [postStep, setPostStep] = useState<1 | 2 | 3>(1);
   const [postCategory, setPostCategory] = useState<CommCategory | null>(null);
   const [postText, setPostText] = useState('');
-  const [postMedia, setPostMedia] = useState<MediaType | null>(null);
   const [postSubmitted, setPostSubmitted] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [channelName, setChannelName] = useState('');
@@ -204,16 +221,13 @@ export default function CommunityFlow() {
       await recordModuleCompletion({ moduleId: 'board-note', title: promptLabel, body: trimmed, metadata });
     }
     if (shareOption === 'community') {
-      const colors = NOTE_COLOR_ORDER;
-      const avatarIds = [0, 1, 2, 3, 4, 5, 6, 7];
       setSubmittedPosts((list) => [
         {
           id: `local-${Date.now()}`,
           text: trimmed,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          color: NOTE_COLOR_ORDER[Math.floor(Math.random() * NOTE_COLOR_ORDER.length)],
           category: 'notjustme',
           timestamp: 'Just now',
-          avatarId: avatarIds[Math.floor(Math.random() * avatarIds.length)],
         },
         ...list,
       ]);
@@ -241,21 +255,17 @@ export default function CommunityFlow() {
     setReportTarget(null);
   };
 
-  const openAddPost = () => { setPostStep(1); setPostCategory(null); setPostText(''); setPostMedia(null); setPostSubmitted(false); setShowAddPost(true); };
+  const openAddPost = () => { setPostStep(1); setPostCategory(null); setPostText(''); setPostSubmitted(false); setShowAddPost(true); };
   const closeAddPost = () => { setShowAddPost(false); setPostSubmitted(false); };
   const submitPost = () => {
     if (!postCategory || !postText.trim()) return;
-    const colors = NOTE_COLOR_ORDER;
-    const avatarIds = [0, 1, 2, 3, 4, 5, 6, 7];
     setSubmittedPosts((list) => [
       {
         id: `local-${Date.now()}`,
         text: postText.trim(),
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: NOTE_COLOR_ORDER[Math.floor(Math.random() * NOTE_COLOR_ORDER.length)],
         category: postCategory,
-        media: postMedia ?? undefined,
         timestamp: 'Just now',
-        avatarId: avatarIds[Math.floor(Math.random() * avatarIds.length)],
       },
       ...list,
     ]);
@@ -329,7 +339,7 @@ export default function CommunityFlow() {
 
   if (screen === 'write') {
     const canContinue = noteText.trim().length > 0;
-    const colors = NOTE_COLORS[selectedColor];
+    const colors = noteColorTokens(selectedColor);
     return shell('Write', <>
       <View style={styles.promptBanner}>
         <Text style={styles.promptBannerKicker}>Your prompt</Text>
@@ -338,13 +348,13 @@ export default function CommunityFlow() {
       <Text style={styles.kicker}>WHAT WOULD YOU LIKE TO ADD?</Text>
       <View style={[styles.noteComposer, { backgroundColor: colors.bg, borderColor: colors.border }]}>
         <Text style={styles.noteComposerIcon}>{selectedIcon}</Text>
-        <TextInput value={noteText} onChangeText={setNoteText} placeholder="It can be something big or small…" placeholderTextColor="#B8A898" multiline maxLength={280} style={styles.noteComposerInput} />
+        <TextInput value={noteText} onChangeText={setNoteText} placeholder="It can be something big or small…" placeholderTextColor={Palette.neutral600} multiline maxLength={280} style={styles.noteComposerInput} />
         <Text style={styles.charCount}>{noteText.length}/280</Text>
       </View>
       <View style={styles.pickerRow}>
         <View style={styles.colorRow}>
           {NOTE_COLOR_ORDER.map((c) => (
-            <Pressable key={c} onPress={() => setSelectedColor(c)} style={[styles.colorDot, { backgroundColor: NOTE_COLORS[c].bg, borderColor: selectedColor === c ? Palette.accent700 : NOTE_COLORS[c].border }, selectedColor === c && styles.colorDotOn]} />
+            <Pressable key={c} onPress={() => setSelectedColor(c)} style={[styles.colorDot, { backgroundColor: noteColorTokens(c).bg, borderColor: selectedColor === c ? Palette.accent700 : noteColorTokens(c).border }, selectedColor === c && styles.colorDotOn]} />
           ))}
         </View>
         <View style={styles.iconRow}>
@@ -370,7 +380,7 @@ export default function CommunityFlow() {
   }
 
   if (screen === 'preview') {
-    const colors = NOTE_COLORS[selectedColor];
+    const colors = noteColorTokens(selectedColor);
     return shell('Preview', <>
       <View style={[styles.previewCard, { backgroundColor: colors.bg, borderColor: colors.border }]}>
         <View style={styles.previewTopRow}>
@@ -471,15 +481,6 @@ export default function CommunityFlow() {
               <Text style={styles.kicker}>WHAT DO YOU WANT TO SAY?</Text>
               <TextInput value={postText} onChangeText={setPostText} multiline maxLength={300} placeholder="Something that's helped you…" placeholderTextColor={Palette.neutral600} style={styles.input} />
               <Text style={styles.charCount}>{postText.length}/300</Text>
-              <Text style={styles.kicker}>ADD SOMETHING (OPTIONAL)</Text>
-              <View style={styles.rowGap}>
-                {(['photo', 'video'] as const).map((m) => (
-                  <Pressable key={m} onPress={() => setPostMedia((prev) => (prev === m ? null : m))} style={[styles.mediaToggle, postMedia === m && styles.mediaToggleOn, styles.flex1]}>
-                    <Text style={[styles.mediaToggleText, postMedia === m && styles.mediaToggleTextOn]}>{m === 'photo' ? '📷 Photo' : '🎬 Video'}</Text>
-                  </Pressable>
-                ))}
-              </View>
-              {postMedia ? <View style={styles.mediaPlaceholder}><Text style={styles.mediaPlaceholderText}>{postMedia === 'photo' ? 'Tap to add a photo' : 'Tap to add a video'}</Text></View> : null}
               <Btn label="Next →" disabled={!postText.trim()} onPress={() => setPostStep(3)} style={!postText.trim() ? styles.disabled : undefined} />
             </View>
           ) : (
@@ -491,7 +492,7 @@ export default function CommunityFlow() {
                 <Text style={styles.safeguardText}>Make sure you&apos;re comfortable sharing it, and keep it helpful and respectful. You&apos;re adding to a space where people come when things feel hard — what you say matters. 💛</Text>
               </View>
               {postCategory ? (
-                <View style={[styles.previewMini, { backgroundColor: NOTE_COLORS.mint.bg, borderColor: NOTE_COLORS.mint.border }]}>
+                <View style={[styles.previewMini, { backgroundColor: noteColorTokens('mint').bg, borderColor: noteColorTokens('mint').border }]}>
                   <Text style={styles.previewMiniLabel}>{CATEGORY_LABEL[postCategory]}</Text>
                   <Text style={styles.previewMiniText}>&quot;{postText}&quot;</Text>
                 </View>
@@ -540,8 +541,8 @@ export default function CommunityFlow() {
             {filteredBoardNotes.map((note) => (
               <PostIt key={note.id} note={note} onEdit={() => startEditNote(note)} onDelete={() => setDeleteTarget(note.id)} />
             ))}
-            {filteredLegacy.map((completion) => (
-              <View key={completion.id} style={styles.legacyCard}>
+            {filteredLegacy.map((completion, index) => (
+              <View key={`${completion.moduleId}-${completion.completedAt}-${index}`} style={styles.legacyCard}>
                 <Text style={styles.legacyIcon}>{BOARD_MODULES[completion.moduleId].icon}</Text>
                 <Text style={styles.legacyLabel}>{BOARD_MODULES[completion.moduleId].label}</Text>
                 <Text style={styles.legacyBody}>{completion.body || BOARD_MODULES[completion.moduleId].label}</Text>
@@ -646,22 +647,26 @@ function ConfirmSheet({ visible, title, body, confirmLabel, onCancel, onConfirm 
 
 // ─── Cards ──────────────────────────────────────────────────────────────────
 
+/** Standard default profile icon — same treatment for every post, no per-user variation. */
+function Avatar({ size = 28 }: { size?: number }) {
+  return (
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Ionicons name="person" size={Math.round(size * 0.55)} color={Palette.neutral600} />
+    </View>
+  );
+}
+
 function CommunityPostCard({ post, isSaved, onToggleSave, onReport }: { post: CommPost; isSaved: boolean; onToggleSave: () => void; onReport: () => void }) {
-  const colors = NOTE_COLORS[post.color];
-  const badge = CATEGORY_BADGE_COLORS[post.category];
+  const colors = noteColorTokens(post.color);
+  const badge = categoryBadgeTokens(post.category);
   return (
     <View style={[styles.postCard, { backgroundColor: colors.bg, borderColor: colors.border }]}>
       <View style={styles.postTopRow}>
-        <MonsterAvatar id={post.avatarId} size={26} />
+        <Avatar size={26} />
         <View style={[styles.postBadge, { backgroundColor: badge.bg }]}><Text style={[styles.postBadgeText, { color: badge.text }]}>{CATEGORY_LABEL[post.category]}</Text></View>
         <Text style={styles.postTimestamp}>{post.timestamp}</Text>
         <Pressable onPress={onReport} hitSlop={8}><Text style={styles.postFlag}>⚑</Text></Pressable>
       </View>
-      {post.media ? (
-        <View style={styles.mediaBanner}>
-          <Text style={styles.mediaBannerText}>{post.media === 'photo' ? '📷 Photo' : '🎬 Video'}</Text>
-        </View>
-      ) : null}
       <Text style={styles.postText}>{post.text}</Text>
       <Pressable onPress={onToggleSave} hitSlop={8} style={styles.postStarBtn}>
         <Text style={[styles.postStarText, isSaved && styles.postStarTextOn]}>{isSaved ? '★' : '☆'}</Text>
@@ -671,12 +676,12 @@ function CommunityPostCard({ post, isSaved, onToggleSave, onReport }: { post: Co
 }
 
 function SavedPostCard({ post, onUnsave }: { post: CommPost; onUnsave: () => void }) {
-  const colors = NOTE_COLORS[post.color];
-  const badge = CATEGORY_BADGE_COLORS[post.category];
+  const colors = noteColorTokens(post.color);
+  const badge = categoryBadgeTokens(post.category);
   return (
     <View style={[styles.savedCard, { backgroundColor: colors.bg, borderColor: colors.border }]}>
       <View style={styles.postTopRow}>
-        <MonsterAvatar id={post.avatarId} size={22} />
+        <Avatar size={22} />
         <View style={[styles.postBadge, { backgroundColor: badge.bg }]}><Text style={[styles.postBadgeText, { color: badge.text }]}>{CATEGORY_LABEL[post.category]}</Text></View>
       </View>
       <Text style={styles.postText}>{post.text}</Text>
@@ -688,12 +693,12 @@ function SavedPostCard({ post, onUnsave }: { post: CommPost; onUnsave: () => voi
 function PostIt({ note, onEdit, onDelete }: { note: ModuleCompletion; onEdit: () => void; onDelete: () => void }) {
   const metadata = note.metadata ?? {};
   const color = (metadata.color as NoteColor) ?? 'yellow';
-  const colors = NOTE_COLORS[color];
+  const colors = noteColorTokens(color);
   const icon = typeof metadata.icon === 'string' ? metadata.icon : '⭐';
   return (
     <View style={[styles.postIt, { backgroundColor: colors.bg, borderColor: colors.border }]}>
       <View style={styles.postItTopRow}>
-        <MonsterAvatar id={MY_AVATAR_ID} size={20} />
+        <Avatar size={20} />
         <Text style={styles.postItPrompt}>{note.title}</Text>
         <Text style={styles.postItIcon}>{icon}</Text>
       </View>
@@ -727,13 +732,15 @@ const styles = themedStyleSheet(() => ({
   subtitle: { color: Palette.neutral700, fontSize: 13, lineHeight: 19 },
   subtitleMuted: { color: Palette.neutral600, fontSize: 12.5, lineHeight: 18 },
 
+  avatar: { backgroundColor: Palette.neutral200, alignItems: 'center', justifyContent: 'center' },
+
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   filterChip: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Palette.neutral200 },
-  filterChipOn: { backgroundColor: '#7BAE8A' },
+  filterChipOn: { backgroundColor: Palette.accent2_700 },
   filterChipAlt: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: Radius.pill, backgroundColor: Palette.neutral200 },
   filterChipAltOn: { backgroundColor: Palette.accent700 },
   filterChipText: { fontSize: 12, fontWeight: '700', color: Palette.neutral700 },
-  filterChipTextOn: { color: '#FFFFFF' },
+  filterChipTextOn: { color: Palette.bg },
   addChannelBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.neutral200 },
   addChannelLabel: { fontSize: 16, fontWeight: '700', color: Palette.neutral700 },
 
@@ -746,14 +753,12 @@ const styles = themedStyleSheet(() => ({
   postTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   postBadge: { paddingVertical: 3, paddingHorizontal: 9, borderRadius: Radius.pill },
   postBadgeText: { fontSize: 10, fontWeight: '700' },
-  postTimestamp: { fontSize: 10.5, color: '#9E8E7E', marginLeft: 'auto' },
-  postFlag: { fontSize: 13, color: '#C8BEB4' },
-  postText: { fontSize: 13.5, color: '#3D2B1A', lineHeight: 20, fontWeight: '600' },
+  postTimestamp: { fontSize: 10.5, color: Palette.neutral600, marginLeft: 'auto' },
+  postFlag: { fontSize: 13, color: Palette.neutral600 },
+  postText: { fontSize: 13.5, color: Palette.text, lineHeight: 20, fontWeight: '600' },
   postStarBtn: { position: 'absolute', bottom: 10, right: 12 },
-  postStarText: { fontSize: 18, color: '#C8BEB4' },
-  postStarTextOn: { color: '#E8833A' },
-  mediaBanner: { height: 70, borderRadius: Radius.sm, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
-  mediaBannerText: { fontSize: 13, fontWeight: '700', color: '#3D2B1A' },
+  postStarText: { fontSize: 18, color: Palette.neutral600 },
+  postStarTextOn: { color: Palette.accent700 },
 
   cardGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between' },
   savedCard: { width: '48%', borderRadius: Radius.lg, borderWidth: 2, padding: 12, paddingBottom: 28, gap: 6, boxShadow: Shadow.elevSm },
@@ -765,17 +770,17 @@ const styles = themedStyleSheet(() => ({
 
   postIt: { width: '48%', borderRadius: Radius.sm, borderWidth: 1, padding: 10, paddingBottom: 26, gap: 6, boxShadow: Shadow.elevSm },
   postItTopRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  postItPrompt: { flex: 1, fontSize: 9.5, fontWeight: '700', color: '#7A6355', opacity: 0.75 },
+  postItPrompt: { flex: 1, fontSize: 9.5, fontWeight: '700', color: Palette.neutral700 },
   postItIcon: { fontSize: 14 },
-  postItBody: { fontSize: 12, color: '#3D2B1A', lineHeight: 17, fontWeight: '600' },
-  postItDate: { fontSize: 10, color: '#9E8E7E' },
+  postItBody: { fontSize: 12, color: Palette.text, lineHeight: 17, fontWeight: '600' },
+  postItDate: { fontSize: 10, color: Palette.neutral600 },
   postItActions: { position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 4 },
-  postItActionBtn: { width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center' },
+  postItActionBtn: { width: 20, height: 20, borderRadius: 10, backgroundColor: Palette.neutral100, alignItems: 'center', justifyContent: 'center' },
   postItActionText: { fontSize: 10 },
 
-  fab: { position: 'absolute', bottom: 24, alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: '#7BAE8A', boxShadow: Shadow.lg },
+  fab: { position: 'absolute', bottom: 24, alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Palette.accent2_700, boxShadow: Shadow.lg },
   fabAlt: { position: 'absolute', bottom: 24, alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 22, borderRadius: Radius.pill, backgroundColor: Palette.accent700, boxShadow: Shadow.lg },
-  fabLabel: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
+  fabLabel: { color: Palette.bg, fontWeight: '700', fontSize: 14 },
 
   // Reflect
   promptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
@@ -791,8 +796,8 @@ const styles = themedStyleSheet(() => ({
   promptBannerText: { fontSize: 15, color: Palette.text },
   noteComposer: { borderRadius: Radius.lg, borderWidth: 2, padding: 14, minHeight: 150, gap: 4 },
   noteComposerIcon: { position: 'absolute', top: 10, right: 12, fontSize: 22 },
-  noteComposerInput: { minHeight: 110, fontSize: 14, color: '#3D2B1A', fontWeight: '600', paddingRight: 24 },
-  charCount: { fontSize: 10, color: '#B8A898', textAlign: 'right' },
+  noteComposerInput: { minHeight: 110, fontSize: 14, color: Palette.text, fontWeight: '600', paddingRight: 24 },
+  charCount: { fontSize: 10, color: Palette.neutral600, textAlign: 'right' },
   pickerRow: { gap: 10 },
   colorRow: { flexDirection: 'row', gap: 8 },
   colorDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2 },
@@ -802,16 +807,16 @@ const styles = themedStyleSheet(() => ({
   iconChipOn: { backgroundColor: Palette.accent100, borderColor: Palette.accent700 },
   iconChipText: { fontSize: 15 },
   ideaBox: { backgroundColor: Palette.accent100, borderRadius: Radius.lg, padding: 10, gap: 6 },
-  starterRow: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: Radius.sm, backgroundColor: 'rgba(255,255,255,0.5)' },
+  starterRow: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: Radius.sm, backgroundColor: Palette.neutral100 },
   starterText: { fontSize: 12.5, fontWeight: '600', color: Palette.accent700 },
 
   // Preview
   previewCard: { borderRadius: Radius.xl, borderWidth: 2, padding: 20, minHeight: 160, gap: 10, boxShadow: Shadow.lg },
   previewTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  previewKicker: { fontSize: 10.5, fontWeight: '700', color: '#9E8E7E', letterSpacing: 0.5 },
+  previewKicker: { fontSize: 10.5, fontWeight: '700', color: Palette.neutral600, letterSpacing: 0.5 },
   previewIcon: { fontSize: 26 },
-  previewText: { fontSize: 15, fontWeight: '700', color: '#3D2B1A', lineHeight: 21 },
-  previewDate: { fontSize: 11, color: '#B8A898' },
+  previewText: { fontSize: 15, fontWeight: '700', color: Palette.text, lineHeight: 21 },
+  previewDate: { fontSize: 11, color: Palette.neutral600 },
   shareOption: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, borderWidth: 2, borderColor: Palette.neutral300 },
   shareOptionOn: { borderColor: Palette.accent700, backgroundColor: Palette.accent100 },
   radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: Palette.neutral300, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
@@ -821,8 +826,8 @@ const styles = themedStyleSheet(() => ({
   disclosureText: { fontSize: 11.5, color: Palette.neutral700, lineHeight: 17 },
   disclosureEmphasis: { fontWeight: '700', color: Palette.accent700 },
 
-  // Sheets
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(61,43,26,0.4)' },
+  // Sheets — scrim derived from the theme's own darkest neutral, not a foreign color
+  sheetBackdrop: { flex: 1, backgroundColor: `${Palette.neutral800}66` },
   sheetContainer: { backgroundColor: Palette.bg, borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, maxHeight: '82%', paddingBottom: 24 },
   sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: Palette.neutral300, marginTop: 10, marginBottom: 4 },
   sheetBody: { paddingHorizontal: 20, paddingTop: 10, gap: 12 },
@@ -841,12 +846,6 @@ const styles = themedStyleSheet(() => ({
   categoryOptionDesc: { fontSize: 12, color: Palette.neutral600 },
 
   input: { minHeight: 100, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 14, color: Palette.text, textAlignVertical: 'top', boxShadow: Shadow.elevSm },
-  mediaToggle: { alignItems: 'center', paddingVertical: 12, borderRadius: Radius.sm, backgroundColor: Palette.neutral200, borderWidth: 2, borderColor: 'transparent' },
-  mediaToggleOn: { backgroundColor: Palette.accent2_100, borderColor: Palette.accent2_700 },
-  mediaToggleText: { fontSize: 13, fontWeight: '700', color: Palette.neutral700 },
-  mediaToggleTextOn: { color: Palette.accent2_800 },
-  mediaPlaceholder: { height: 80, borderRadius: Radius.lg, borderWidth: 2, borderStyle: 'dashed', borderColor: Palette.accent2_200, alignItems: 'center', justifyContent: 'center' },
-  mediaPlaceholderText: { fontSize: 12, fontWeight: '600', color: Palette.neutral600 },
 
   safeguardEmoji: { fontSize: 34, textAlign: 'center' },
   safeguardTitle: { fontSize: 18, textAlign: 'center', color: Palette.text, lineHeight: 24 },
@@ -861,7 +860,7 @@ const styles = themedStyleSheet(() => ({
   emojiOptionOn: { backgroundColor: Palette.accent100, borderColor: Palette.accent700 },
   emojiOptionText: { fontSize: 17 },
 
-  confirmBackdrop: { flex: 1, backgroundColor: 'rgba(61,43,26,0.35)', justifyContent: 'flex-end', padding: 16 },
+  confirmBackdrop: { flex: 1, backgroundColor: `${Palette.neutral800}66`, justifyContent: 'flex-end', padding: 16 },
   confirmCard: { backgroundColor: Palette.bg, borderRadius: Radius.xl, padding: 20, gap: 10, boxShadow: Shadow.lg },
   confirmTitle: { fontSize: 16, color: Palette.text },
   confirmBody: { fontSize: 13, color: Palette.neutral700, lineHeight: 19, marginBottom: 4 },
