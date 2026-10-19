@@ -36,7 +36,14 @@ type Win = {
   size: WinSize;
   body: string;
   date: string;
+  dateKey: string;
   favorite: boolean;
+};
+
+type FutureWin = {
+  id: string;
+  text: string;
+  size: WinSize;
 };
 
 // Fixed category colors — kept independent of the app's theme tokens so the
@@ -61,17 +68,68 @@ const WIN_META: Record<WinSize, { singular: string; plural: string; subtitle: st
 const WIN_SIZE_ORDER: WinSize[] = ['big', 'medium', 'small'];
 const WIN_CARD_DARK = '#26282B';
 
+const WIN_IDEAS: Record<WinSize, string[]> = {
+  small: [
+    "Finished something I'd been putting off",
+    'Asked for help',
+    'Helped someone out',
+    "Went to practice even though I didn't feel like it",
+    'Cleaned or organized something',
+    "Spoke up when I normally wouldn't",
+  ],
+  medium: [
+    'Finished a difficult assignment',
+    'Learned something new',
+    'Helped organize something',
+    'Improved at a sport, hobby, or skill',
+    'Worked through a problem with a friend',
+    'Kept working toward something that mattered to me',
+  ],
+  big: [
+    'Finished a big project',
+    "Reached a goal I'd been working toward",
+    'Made a team, club, performance, or activity',
+    'Improved at something after working on it for a long time',
+    'Did something that felt really difficult',
+    "Accomplished something I didn't think I could do",
+  ],
+};
+
+const NOT_SURE_COPY = "There's no right answer. Pick whichever one feels closest. If you're proud of it, it belongs here.";
+
 const initialWins: Win[] = [
-  { id: 'w1', size: 'small', body: 'Finished something I had been putting off all week.', date: 'Jul 30', favorite: false },
-  { id: 'w2', size: 'small', body: 'Made my friend laugh when they were having a rough day.', date: 'Aug 1', favorite: true },
-  { id: 'w3', size: 'medium', body: 'Improved at something after working on it for a while.', date: 'Aug 4', favorite: false },
-  { id: 'w4', size: 'medium', body: 'Asked for help instead of giving up on my homework.', date: 'Aug 5', favorite: false },
-  { id: 'w5', size: 'big', body: 'Finished a science project I worked on for three weeks.', date: 'Jul 28', favorite: true },
+  { id: 'w1', size: 'small', body: 'Finished something I had been putting off all week.', date: 'Jul 30', dateKey: '2026-07-30', favorite: false },
+  { id: 'w2', size: 'small', body: 'Made my friend laugh when they were having a rough day.', date: 'Aug 1', dateKey: '2026-08-01', favorite: true },
+  { id: 'w3', size: 'medium', body: 'Improved at something after working on it for a while.', date: 'Aug 4', dateKey: '2026-08-04', favorite: false },
+  { id: 'w4', size: 'medium', body: 'Asked for help instead of giving up on my homework.', date: 'Aug 5', dateKey: '2026-08-05', favorite: false },
+  { id: 'w5', size: 'big', body: 'Finished a science project I worked on for three weeks.', date: 'Jul 28', dateKey: '2026-07-28', favorite: true },
 ];
 
 function formatShortDate(date: Date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+
+function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function buildDateKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function buildCalendarGrid(year: number, month: number): (number | null)[][] {
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: (number | null)[] = Array(firstDay).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+  return rows;
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const words = [
   'Brave', 'Kind', 'Patient', 'Creative', 'Strong', 'Thoughtful', 'Caring', 'Curious', 'Resilient',
@@ -99,11 +157,17 @@ function pickWordPair(pool: string[]): [string, string] {
   return [first, second];
 }
 
-const THANKS_STARTERS = [
-  "I'm really thankful for _____ because it helped me...",
-  'A small moment today that made me smile was _____ when...',
-  'Something or someone I usually take for granted but appreciate today is _____.',
-  'I felt supported today when _____.',
+const GRATITUDE_PROMPTS: { label: string; question: string }[] = [
+  { label: 'Someone', question: "Who's someone you're glad to have in your life right now?" },
+  { label: 'Something small', question: "What's one little thing that made today better?" },
+  { label: 'A moment', question: "What's a moment from lately that you're glad happened?" },
+  { label: 'A place', question: "Where's somewhere you're happy you get to spend time?" },
+  { label: 'Something funny', question: 'What made you laugh or smile recently?' },
+  { label: 'Something that helped', question: 'What made something a little easier for you lately?' },
+  { label: 'Something you have', question: "What's something in your life you're really glad you have?" },
+  { label: 'Someone did for you', question: 'Did someone do something small for you that you appreciated?' },
+  { label: 'A good surprise', question: "What's something that turned out better than you expected?" },
+  { label: 'A memory', question: "What's a moment you'd want to remember?" },
 ];
 
 const KEYBOARD_ROWS = [
@@ -122,10 +186,17 @@ export default function AccomplishmentsFlow() {
   const [win, setWin] = useState('');
   const [winCategory, setWinCategory] = useState<WinSize | null>(null);
   const [winsList, setWinsList] = useState<Win[]>(initialWins);
-  const [futureWins, setFutureWins] = useState<string[]>([]);
+  const [expandedTiers, setExpandedTiers] = useState<Record<WinSize, boolean>>({ big: false, medium: false, small: false });
+  const [futureWins, setFutureWins] = useState<FutureWin[]>([]);
   const [futureWinText, setFutureWinText] = useState('');
+  const [futureWinCategory, setFutureWinCategory] = useState<WinSize | null>(null);
+  const [showWinIdeas, setShowWinIdeas] = useState(false);
+  const [showNotSure, setShowNotSure] = useState(false);
+  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
+  const [calSelectedDay, setCalSelectedDay] = useState<number | null>(null);
   const [thanks, setThanks] = useState('');
-  const [thanksIdeaIndex, setThanksIdeaIndex] = useState(0);
+  const [showGratitudeIdeas, setShowGratitudeIdeas] = useState(false);
   const [cardWords, setCardWords] = useState<string[]>(() => pickRandomWords(words, CARD_COUNT));
   const [word, setWord] = useState<string | null>(null);
   const [choicePair, setChoicePair] = useState<[string, string]>(() => pickWordPair(words));
@@ -249,9 +320,15 @@ export default function AccomplishmentsFlow() {
     setIdeaIndex((i) => i + 1);
   };
 
-  const handleThanksIdea = () => {
-    setThanks(THANKS_STARTERS[thanksIdeaIndex % THANKS_STARTERS.length]);
-    setThanksIdeaIndex((i) => i + 1);
+  const surpriseMeGratitude = () => {
+    const idx = Math.floor(Math.random() * GRATITUDE_PROMPTS.length);
+    setThanks(GRATITUDE_PROMPTS[idx].question);
+    setShowGratitudeIdeas(false);
+  };
+
+  const pickGratitudePrompt = (question: string) => {
+    setThanks(question);
+    setShowGratitudeIdeas(false);
   };
 
   const saveReflection = () => complete('doing-it', 'I’m Doing It', reflectionText.trim(), { word: targetWord, won: wordleWon ?? false, guessCount: guesses.length });
@@ -261,28 +338,40 @@ export default function AccomplishmentsFlow() {
   const addWin = async () => {
     const trimmed = win.trim();
     if (!trimmed || !winCategory) return;
-    setWinsList((list) => [{ id: `w-${Date.now()}`, size: winCategory, body: trimmed, date: formatShortDate(new Date()), favorite: false }, ...list]);
+    const today = new Date();
+    setWinsList((list) => [{ id: `w-${Date.now()}`, size: winCategory, body: trimmed, date: formatShortDate(today), dateKey: toDateKey(today), favorite: false }, ...list]);
     await recordModuleCompletion({ moduleId: 'wins', title: 'My Wins', body: trimmed, metadata: { size: winCategory } });
     setWin('');
     setWinCategory(null);
+    setShowWinIdeas(false);
+    setShowNotSure(false);
     setPage('wins');
   };
 
   const addFutureWin = () => {
     const trimmed = futureWinText.trim();
-    if (!trimmed) return;
-    setFutureWins((list) => [trimmed, ...list]);
+    if (!trimmed || !futureWinCategory) return;
+    setFutureWins((list) => [{ id: `fut-${Date.now()}`, text: trimmed, size: futureWinCategory }, ...list]);
     setFutureWinText('');
+    setFutureWinCategory(null);
+  };
+
+  const moveFutureWinToWins = async (item: FutureWin) => {
+    const today = new Date();
+    setFutureWins((list) => list.filter((entry) => entry.id !== item.id));
+    setWinsList((list) => [{ id: `w-${Date.now()}`, size: item.size, body: item.text, date: formatShortDate(today), dateKey: toDateKey(today), favorite: false }, ...list]);
+    await recordModuleCompletion({ moduleId: 'wins', title: 'My Wins', body: item.text, metadata: { size: item.size, fromFutureWin: true } });
   };
 
   if (page === 'game' && gamePhase === 'playing') return shell('✨ I’m Doing It', <WordleGame targetWord={targetWord} guesses={guesses} currentGuess={currentGuess} keyStatuses={keyStatuses} onKeyPress={handleKeyPress} invalidGuess={invalidGuess} shakeAnim={shakeAnim} />);
   if (page === 'game') return shell('✨ I’m Doing It', <WordleReflection word={targetWord} won={wordleWon ?? false} reflectionText={reflectionText} onChangeText={setReflectionText} onIdea={handleIdea} onSave={saveReflection} />);
   if (page === 'wins') {
     const favorites = winsList.filter((item) => item.favorite);
+    const openAddWin = (size: WinSize | null) => { setWinCategory(size); setShowWinIdeas(false); setShowNotSure(false); setPage('addWin'); };
     return shell('My Accomplishments', <>
       <Text style={styles.privacyPill}>This is just for you.</Text>
       <View style={styles.navRow}>
-        <Pressable style={styles.navBtn} onPress={() => setPage('browseByDate')}><Text style={styles.navBtnLabel}>Browse by Date</Text></Pressable>
+        <Pressable style={styles.navBtn} onPress={() => { setCalSelectedDay(null); setPage('browseByDate'); }}><Text style={styles.navBtnLabel}>Browse by Date</Text></Pressable>
         <Pressable style={styles.navBtn} onPress={() => setPage('futureWins')}><Text style={styles.navBtnLabel}>Future Wins</Text></Pressable>
       </View>
       {favorites.length > 0 ? (
@@ -296,27 +385,183 @@ export default function AccomplishmentsFlow() {
           </ScrollView>
         </View>
       ) : null}
-      <Btn label="+ Add an accomplishment" onPress={() => { setWinCategory(null); setPage('addWin'); }} style={styles.primaryAction} />
-      {WIN_SIZE_ORDER.map((size) => (
-        <View key={size} style={styles.categorySection}>
-          <CategoryHeader size={size} onAdd={() => { setWinCategory(size); setPage('addWin'); }} />
-          <View style={styles.categoryCards}>
-            {winsList.filter((item) => item.size === size).map((item) => <AccomplishmentCard key={item.id} win={item} onToggleFavorite={toggleFavorite} />)}
+      <Btn label="+ Add an accomplishment" onPress={() => openAddWin(null)} style={styles.primaryAction} />
+      {WIN_SIZE_ORDER.map((size) => {
+        const tierWins = winsList.filter((item) => item.size === size);
+        const isExpanded = expandedTiers[size];
+        const visibleWins = isExpanded ? tierWins : tierWins.slice(0, 2);
+        return (
+          <View key={size} style={styles.categorySection}>
+            <CategoryHeader size={size} onAdd={() => openAddWin(size)} />
+            <View style={styles.categoryCards}>
+              {visibleWins.map((item) => <AccomplishmentCard key={item.id} win={item} onToggleFavorite={toggleFavorite} />)}
+            </View>
+            {tierWins.length > 2 ? (
+              <Pressable onPress={() => setExpandedTiers((prev) => ({ ...prev, [size]: !prev[size] }))} style={styles.expandToggle}>
+                <Text style={[styles.expandToggleLabel, { color: WIN_META[size].pill }]}>
+                  {isExpanded ? '↑ Show less' : `↓ See all ${tierWins.length} ${WIN_META[size].singular.toLowerCase()}s`}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
-        </View>
-      ))}
+        );
+      })}
     </>);
   }
-  if (page === 'browseByDate') return shell('Browse by Date', <>{winsList.map((item) => <View key={item.id} style={styles.dateGroup}><Text style={styles.kicker}>{item.date.toUpperCase()}</Text><AccomplishmentCard win={item} onToggleFavorite={toggleFavorite} /></View>)}</>);
+  if (page === 'browseByDate') {
+    const calGrid = buildCalendarGrid(calYear, calMonth);
+    const tiersByDay: Record<number, WinSize[]> = {};
+    winsList.forEach((item) => {
+      const [y, m, d] = item.dateKey.split('-').map(Number);
+      if (y === calYear && m - 1 === calMonth) {
+        if (!tiersByDay[d]) tiersByDay[d] = [];
+        tiersByDay[d].push(item.size);
+      }
+    });
+    const selectedDateKey = calSelectedDay !== null ? buildDateKey(calYear, calMonth, calSelectedDay) : null;
+    const selectedWins = selectedDateKey ? winsList.filter((item) => item.dateKey === selectedDateKey) : [];
+    const todayKey = toDateKey(new Date());
+    const goToPrevMonth = () => {
+      if (calMonth === 0) { setCalYear((y) => y - 1); setCalMonth(11); } else setCalMonth((m) => m - 1);
+      setCalSelectedDay(null);
+    };
+    const goToNextMonth = () => {
+      if (calMonth === 11) { setCalYear((y) => y + 1); setCalMonth(0); } else setCalMonth((m) => m + 1);
+      setCalSelectedDay(null);
+    };
+    return shell('Browse by Date', <>
+      <View style={styles.calendarHeaderRow}>
+        <Pressable onPress={goToPrevMonth} style={styles.calendarNavBtn}><Text style={styles.calendarNavLabel}>←</Text></Pressable>
+        <Heading style={styles.calendarMonthLabel}>{MONTH_NAMES[calMonth]} {calYear}</Heading>
+        <Pressable onPress={goToNextMonth} style={styles.calendarNavBtn}><Text style={styles.calendarNavLabel}>→</Text></Pressable>
+      </View>
+      <View style={styles.calendarWeekRow}>
+        {WEEKDAY_LABELS.map((label, i) => <Text key={i} style={styles.calendarWeekDayLabel}>{label}</Text>)}
+      </View>
+      <View style={styles.calendarGrid}>
+        {calGrid.map((week, wi) => (
+          <View key={wi} style={styles.calendarWeekRow}>
+            {week.map((day, di) => {
+              if (day === null) return <View key={di} style={styles.calendarCell} />;
+              const tiers = tiersByDay[day] ?? [];
+              const isSelected = calSelectedDay === day;
+              const isToday = buildDateKey(calYear, calMonth, day) === todayKey;
+              return (
+                <Pressable
+                  key={di}
+                  onPress={() => setCalSelectedDay((prev) => (prev === day ? null : day))}
+                  style={[styles.calendarCell, isSelected && styles.calendarCellSelected]}>
+                  <Text style={[styles.calendarDayLabel, isSelected && styles.calendarDayLabelSelected, !isSelected && isToday ? { color: WIN_META.big.pill } : null]}>
+                    {day}
+                  </Text>
+                  {tiers.length > 0 ? (
+                    <View style={styles.calendarDotRow}>
+                      {WIN_SIZE_ORDER.filter((size) => tiers.includes(size)).map((size) => (
+                        <View key={size} style={[styles.calendarDot, { backgroundColor: WIN_META[size].pill }]} />
+                      ))}
+                    </View>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ))}
+      </View>
+      <View style={styles.calendarLegendRow}>
+        {WIN_SIZE_ORDER.map((size) => (
+          <View key={size} style={styles.calendarLegendItem}>
+            <View style={[styles.calendarLegendDot, { backgroundColor: WIN_META[size].pill }]} />
+            <Text style={styles.calendarLegendLabel}>{WIN_META[size].singular}</Text>
+          </View>
+        ))}
+      </View>
+      {calSelectedDay !== null ? (
+        <>
+          <Heading style={styles.calendarSelectedHeading}>{MONTH_NAMES[calMonth]} {calSelectedDay}</Heading>
+          {selectedWins.length === 0 ? (
+            <Text style={styles.muted}>Nothing recorded on this day.</Text>
+          ) : (
+            selectedWins.map((item) => <AccomplishmentCard key={item.id} win={item} onToggleFavorite={toggleFavorite} />)
+          )}
+        </>
+      ) : (
+        <Text style={styles.muted}>Tap a day to see your wins.</Text>
+      )}
+    </>);
+  }
   if (page === 'futureWins') return shell('Future Wins', <>
     <Text style={styles.body}>Jot down wins you&apos;re working toward, so you can look forward to celebrating them later.</Text>
     <TextInput value={futureWinText} onChangeText={setFutureWinText} multiline placeholder="What&apos;s a win you&apos;re working toward?" placeholderTextColor={Palette.neutral600} style={styles.input} />
-    <Btn label="Add" disabled={!futureWinText.trim()} onPress={addFutureWin} />
-    {futureWins.map((item, i) => <View key={i} style={styles.card}><Text style={styles.body}>{item}</Text></View>)}
+    <Text style={styles.kicker}>HOW BIG WILL IT BE?</Text>
+    <View style={styles.choices}>
+      {WIN_SIZE_ORDER.map((size) => (
+        <Pressable key={size} onPress={() => setFutureWinCategory(size)} style={[styles.choice, futureWinCategory === size && styles.choiceOn]}>
+          <Text style={styles.body}>{WIN_META[size].singular}</Text>
+        </Pressable>
+      ))}
+    </View>
+    <Btn label="Add" disabled={!futureWinText.trim() || !futureWinCategory} onPress={addFutureWin} />
+    {futureWins.map((item) => (
+      <View key={item.id} style={styles.futureCard}>
+        <View style={styles.futureTopRow}>
+          <Text style={[styles.winBadge, { backgroundColor: WIN_META[item.size].pill }]}>{WIN_META[item.size].singular}</Text>
+        </View>
+        <Text style={styles.body}>{item.text}</Text>
+        <Pressable onPress={() => moveFutureWinToWins(item)} style={styles.futureMoveBtn}>
+          <Text style={styles.futureMoveLabel}>✓ I did it — move to My Wins</Text>
+        </Pressable>
+      </View>
+    ))}
   </>);
-  if (page === 'addWin') return shell('My Accomplishments', <><Heading style={styles.question}>What&apos;d you get done?</Heading><Text style={styles.body}>There&apos;s no wrong answer. Every accomplishment counts.</Text><TextInput value={win} onChangeText={setWin} multiline placeholder="Write it here…" placeholderTextColor={Palette.neutral600} style={styles.input} /><Text style={styles.kicker}>HOW BIG WAS IT?</Text><View style={styles.choices}>{WIN_SIZE_ORDER.map((size) => <Pressable key={size} onPress={() => setWinCategory(size)} style={[styles.choice, winCategory === size && styles.choiceOn]}><Text style={styles.body}>{WIN_META[size].singular}</Text></Pressable>)}</View><Btn label="Add my win" disabled={!win.trim() || !winCategory} onPress={addWin} /></>);
+  if (page === 'addWin') return shell('My Accomplishments', <>
+    <Heading style={styles.question}>What&apos;d you get done?</Heading>
+    <Text style={styles.body}>There&apos;s no wrong answer. Every accomplishment counts.</Text>
+    <TextInput value={win} onChangeText={setWin} multiline placeholder="Write it here…" placeholderTextColor={Palette.neutral600} style={styles.input} />
+    <Text style={styles.kicker}>HOW BIG WAS IT?</Text>
+    <View style={styles.choices}>
+      {WIN_SIZE_ORDER.map((size) => (
+        <Pressable key={size} onPress={() => { setWinCategory(size); setShowWinIdeas(false); }} style={[styles.choice, winCategory === size && styles.choiceOn]}>
+          <Text style={styles.body}>{WIN_META[size].singular}</Text>
+        </Pressable>
+      ))}
+    </View>
+    <Btn label="Not sure?" variant="ghost" onPress={() => setShowNotSure((v) => !v)} />
+    {showNotSure ? <View style={styles.ideaBox}><Text style={styles.ideaBoxText}>{NOT_SURE_COPY}</Text></View> : null}
+    {winCategory ? <Btn label="I need an idea" variant="ghost" onPress={() => setShowWinIdeas((v) => !v)} /> : null}
+    {showWinIdeas && winCategory ? (
+      <View style={styles.ideaBox}>
+        {WIN_IDEAS[winCategory].map((idea, i) => (
+          <View key={i} style={styles.ideaRow}>
+            <Text style={styles.ideaBullet}>•</Text>
+            <Text style={styles.ideaBoxText}>{idea}</Text>
+          </View>
+        ))}
+      </View>
+    ) : null}
+    <Btn label="Add my win" disabled={!win.trim() || !winCategory} onPress={addWin} />
+  </>);
   if (page === 'thanks') return shell('🙏 My Thanks', <><Text style={styles.privacy}>🔒 This is just for you.</Text><View style={styles.card}><Text style={styles.icon}>💛</Text><Heading style={styles.cardTitle}>Something I&apos;m Thankful For</Heading><Text style={styles.body}>Taking a second to notice the good stuff, big or small, can help you appreciate what&apos;s already around you.</Text><Btn label="Start" onPress={() => setPage('thanksAdd')} /></View><View style={styles.card}><Text style={styles.icon}>🃏</Text><Heading style={styles.cardTitle}>Something I Appreciate About Myself</Heading><Text style={styles.body}>Version A: shuffle positive words until one feels like you.</Text><Btn label="Start" onPress={() => setPage('cards')} /></View><View style={styles.card}><Text style={styles.icon}>⚡</Text><Heading style={styles.cardTitle}>Something I Appreciate About Myself</Heading><Text style={styles.body}>Version B: pick between two words, shuffle for more.</Text><Btn label="Start" onPress={() => setPage('choice')} /></View></>);
-  if (page === 'thanksAdd') return shell('My Thanks', <><Text style={styles.icon}>💛</Text><Heading style={styles.question}>Something I&apos;m Thankful For</Heading><Text style={styles.body}>What&apos;s something you&apos;re thankful for today?</Text><TextInput value={thanks} onChangeText={setThanks} multiline placeholder="Write it here…" placeholderTextColor={Palette.neutral600} style={styles.input} /><Btn label="Need an idea?" variant="ghost" onPress={handleThanksIdea} /><Btn label="Save" disabled={!thanks.trim()} onPress={() => complete('thanks', 'My Thanks', thanks.trim())} /></>);
+  if (page === 'thanksAdd') return shell('My Thanks', <>
+    <Text style={styles.icon}>💛</Text>
+    <Heading style={styles.question}>Something I&apos;m Thankful For</Heading>
+    <Text style={styles.body}>What&apos;s something you&apos;re thankful for today?</Text>
+    <TextInput value={thanks} onChangeText={setThanks} multiline placeholder="Write it here…" placeholderTextColor={Palette.neutral600} style={styles.input} />
+    <View style={styles.navRow}>
+      <Btn label="Surprise me" variant="ghost" onPress={surpriseMeGratitude} />
+      <Btn label={showGratitudeIdeas ? 'Hide' : 'Pick one'} variant="ghost" onPress={() => setShowGratitudeIdeas((v) => !v)} />
+    </View>
+    {showGratitudeIdeas ? (
+      <View style={styles.ideaBox}>
+        {GRATITUDE_PROMPTS.map((prompt, i) => (
+          <Pressable key={i} onPress={() => pickGratitudePrompt(prompt.question)} style={styles.gratitudePromptItem}>
+            <Text style={styles.gratitudePromptLabel}>{prompt.label}</Text>
+            <Text style={styles.gratitudePromptQuestion}>{prompt.question}</Text>
+          </Pressable>
+        ))}
+      </View>
+    ) : null}
+    <Btn label="Save" disabled={!thanks.trim()} onPress={() => complete('thanks', 'My Thanks', thanks.trim())} />
+  </>);
   if (page === 'cards') return shell('My Thanks', <>
     <Heading style={styles.question}>Something I Appreciate About Myself</Heading>
     <Text style={styles.body}>Tap a card to flip it and reveal a word.</Text>
@@ -586,8 +831,6 @@ const styles = themedStyleSheet(() => ({
   winBody: { color: '#F5F5F0', fontSize: 14.5, lineHeight: 21 },
   winDate: { color: '#B8B8B8', fontSize: 11 },
 
-  dateGroup: { gap: 8 },
-
   legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   legendPill: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, paddingHorizontal: 12, borderRadius: Radius.pill },
   legendPillText: { color: '#fff', fontSize: 12, fontWeight: '700' },
@@ -613,4 +856,40 @@ const styles = themedStyleSheet(() => ({
   keyCorrect: { backgroundColor: WORDLE_COLORS.correct },
   keyPresent: { backgroundColor: WORDLE_COLORS.present },
   keyAbsent: { backgroundColor: WORDLE_COLORS.absent },
+
+  expandToggle: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  expandToggleLabel: { fontSize: 13, fontWeight: '700' },
+
+  ideaBox: { backgroundColor: Palette.accent2_100, borderRadius: Radius.lg, padding: 14, gap: 8 },
+  ideaBoxText: { color: Palette.text, fontSize: 13.5, lineHeight: 19, flex: 1 },
+  ideaRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  ideaBullet: { color: Palette.accent2_700, fontWeight: '700' },
+
+  futureCard: { backgroundColor: Palette.neutral100, borderRadius: Radius.lg, borderWidth: 1, borderColor: Palette.neutral300, padding: 16, gap: 8, boxShadow: Shadow.elevSm },
+  futureTopRow: { flexDirection: 'row' },
+  futureMoveBtn: { alignSelf: 'flex-start', backgroundColor: Palette.accent2_100, borderRadius: Radius.pill, paddingVertical: 8, paddingHorizontal: 14 },
+  futureMoveLabel: { color: Palette.accent2_700, fontSize: 13, fontWeight: '700' },
+
+  calendarHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  calendarNavBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm },
+  calendarNavLabel: { fontSize: 16, fontWeight: '700', color: Palette.text },
+  calendarMonthLabel: { fontSize: 18 },
+  calendarWeekRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  calendarWeekDayLabel: { width: '14.28%', textAlign: 'center', fontSize: 11, fontWeight: '700', color: Palette.neutral600 },
+  calendarGrid: { gap: 2 },
+  calendarCell: { width: '14.28%', height: 44, alignItems: 'center', justifyContent: 'center', gap: 3, borderRadius: Radius.sm },
+  calendarCellSelected: { backgroundColor: Palette.accent2_700 },
+  calendarDayLabel: { fontSize: 13, fontWeight: '700', color: Palette.text },
+  calendarDayLabelSelected: { color: '#fff' },
+  calendarDotRow: { flexDirection: 'row', gap: 3 },
+  calendarDot: { width: 5, height: 5, borderRadius: 2.5 },
+  calendarLegendRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  calendarLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  calendarLegendDot: { width: 8, height: 8, borderRadius: 4 },
+  calendarLegendLabel: { fontSize: 12, color: Palette.neutral700, fontWeight: '600' },
+  calendarSelectedHeading: { fontSize: 16 },
+
+  gratitudePromptItem: { backgroundColor: Palette.accent2_100, borderRadius: Radius.sm, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
+  gratitudePromptLabel: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700' },
+  gratitudePromptQuestion: { color: Palette.text, fontSize: 13, lineHeight: 18 },
 }));
