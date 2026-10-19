@@ -10,8 +10,10 @@ import {
   getDoabilityOptions, getOtherPatternOption, getPatternBarCards,
   getReflectionPrompt, getStarterPrompts, type PatternBarCard as PatternBarCardData,
 } from '@/data/patterns-data';
+import { AWAY_EXAMPLES, CHECK_IN_OPTIONS, HELP_OPTIONS, TOWARD_EXAMPLES, VALUE_PLACEHOLDERS, WHEN_OPTIONS } from '@/data/values-data';
 
 const values = ['Connection', 'Being Yourself', 'Growth', 'Achievement', 'Health & Well-Being', 'Creativity', 'Independence', 'Kindness', 'Fun', 'Something Else'];
+const MAX_MOVES = 4;
 
 export default function GoalsFlowScreen() {
   const router = useRouter();
@@ -20,7 +22,15 @@ export default function GoalsFlowScreen() {
   const [page, setPage] = useState<'home' | 'values' | 'patterns'>('home');
   const [step, setStep] = useState(0);
   const [value, setValue] = useState<string | null>(null);
-  const [text, setText] = useState('');
+  const [valueNote, setValueNote] = useState('');
+  const [towardMoves, setTowardMoves] = useState<string[]>(['']);
+  const [awayMoves, setAwayMoves] = useState<string[]>(['']);
+  const [selectedMove, setSelectedMove] = useState<string | null>(null);
+  const [smallStep, setSmallStep] = useState('');
+  const [when, setWhen] = useState<string | null>(null);
+  const [helpChoices, setHelpChoices] = useState<string[]>([]);
+  const [customHelp, setCustomHelp] = useState('');
+  const [planFeeling, setPlanFeeling] = useState<string | null>(null);
   const [selectedPatternId, setSelectedPatternId] = useState<string | null>(null);
   const [workOnText, setWorkOnText] = useState('');
   const [smallStepText, setSmallStepText] = useState('');
@@ -33,14 +43,21 @@ export default function GoalsFlowScreen() {
     void getModuleDraft().then((draft) => {
       if (!draft || draft.moduleId !== 'goals') return;
       const state = draft.state as {
-        page?: 'values' | 'patterns'; value?: string | null; text?: string;
+        page?: 'values' | 'patterns'; value?: string | null; valueNote?: string;
+        towardMoves?: string[]; awayMoves?: string[]; selectedMove?: string | null; smallStep?: string;
+        when?: string | null; helpChoices?: string[]; customHelp?: string; planFeeling?: string | null;
         selectedPatternId?: string | null; workOnText?: string; smallStepText?: string; doabilityRating?: string | null;
         reflectionNotes?: string;
       } | undefined;
       setStep(draft.step);
       if (state?.page) setPage(state.page);
       if (state) {
-        setValue(state.value ?? null); setText(state.text ?? '');
+        setValue(state.value ?? null); setValueNote(state.valueNote ?? '');
+        setTowardMoves(state.towardMoves?.length ? state.towardMoves : ['']);
+        setAwayMoves(state.awayMoves?.length ? state.awayMoves : ['']);
+        setSelectedMove(state.selectedMove ?? null); setSmallStep(state.smallStep ?? '');
+        setWhen(state.when ?? null); setHelpChoices(state.helpChoices ?? []);
+        setCustomHelp(state.customHelp ?? ''); setPlanFeeling(state.planFeeling ?? null);
         setSelectedPatternId(state.selectedPatternId ?? null);
         setWorkOnText(state.workOnText ?? ''); setSmallStepText(state.smallStepText ?? '');
         setDoabilityRating(state.doabilityRating ?? null);
@@ -54,16 +71,36 @@ export default function GoalsFlowScreen() {
   useEffect(() => {
     if (page !== 'home') void saveModuleDraft({
       moduleId: 'goals', title: page === 'values' ? 'My Values' : 'My Patterns', route: '/goals-flow', step, totalSteps: maxStep + 1,
-      state: { page, value, text, selectedPatternId, workOnText, smallStepText, doabilityRating, reflectionNotes },
+      state: {
+        page, value, valueNote, towardMoves, awayMoves, selectedMove, smallStep, when, helpChoices, customHelp, planFeeling,
+        selectedPatternId, workOnText, smallStepText, doabilityRating, reflectionNotes,
+      },
     });
-  }, [doabilityRating, page, reflectionNotes, selectedPatternId, smallStepText, step, text, value, workOnText]);
+  }, [awayMoves, customHelp, doabilityRating, helpChoices, page, planFeeling, reflectionNotes, selectedMove, selectedPatternId, smallStep, smallStepText, step, towardMoves, value, valueNote, when, workOnText]);
 
   const finish = async () => {
     if (page === 'values') {
+      const filledToward = towardMoves.filter((move) => move.trim());
+      const filledAway = awayMoves.filter((move) => move.trim());
+      const helpSummary = helpChoices.map((choice) => (choice === 'Write my own' && customHelp ? customHelp : choice)).join(', ');
       await recordModuleCompletion({
         moduleId: 'values',
         title: 'My Values',
-        body: `${value ?? 'A new goal'}${text ? ` · ${text}` : ''}`,
+        body: `${value ?? 'A new goal'}${valueNote ? ` · ${valueNote}` : ''}`
+          + `${selectedMove ? ` · Toward move: ${selectedMove}` : ''}`
+          + `${smallStep ? ` · Small step: ${smallStep}` : ''}`,
+        metadata: {
+          value: value ?? '',
+          valueNote,
+          towardMoves: filledToward.join(' | '),
+          awayMoves: filledAway.join(' | '),
+          selectedMove: selectedMove ?? '',
+          smallStep,
+          when: when ?? '',
+          helpChoices: helpSummary,
+          planFeeling: planFeeling ?? '',
+          isPrivate: true,
+        },
       });
     } else {
       const selectedCard = [...getPatternBarCards(), getOtherPatternOption()].find((card) => card.id === selectedPatternId);
@@ -98,7 +135,7 @@ export default function GoalsFlowScreen() {
   const canContinue = step >= maxStep
     ? (page === 'patterns' ? !!doabilityRating : true)
     : page === 'values'
-      ? (step === 0 ? !!value : true)
+      ? (step === 0 ? !!value : step === 1 ? towardMoves.some((move) => move.trim()) : !!selectedMove)
       : step === 0 ? !!selectedPatternId
       : step === 1 ? !!workOnText.trim()
       : !!smallStepText.trim();
@@ -118,7 +155,15 @@ export default function GoalsFlowScreen() {
             {tabLabels.map((label, index) => <Text key={label} style={index === step ? styles.tabOn : undefined}>{label}</Text>)}
           </View>
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            {page === 'values' ? <Values step={step} selected={value} onSelect={setValue} text={text} setText={setText} /> : (
+            {page === 'values' ? (
+              <Values
+                step={step} selected={value} onSelect={setValue} valueNote={valueNote} setValueNote={setValueNote}
+                towardMoves={towardMoves} setTowardMoves={setTowardMoves} awayMoves={awayMoves} setAwayMoves={setAwayMoves}
+                selectedMove={selectedMove} setSelectedMove={setSelectedMove} smallStep={smallStep} setSmallStep={setSmallStep}
+                when={when} setWhen={setWhen} helpChoices={helpChoices} setHelpChoices={setHelpChoices}
+                customHelp={customHelp} setCustomHelp={setCustomHelp} planFeeling={planFeeling} setPlanFeeling={setPlanFeeling}
+              />
+            ) : (
               <Patterns
                 step={step} selectedPatternId={selectedPatternId} onSelectPattern={setSelectedPatternId}
                 workOnText={workOnText} setWorkOnText={setWorkOnText}
@@ -129,7 +174,7 @@ export default function GoalsFlowScreen() {
             )}
           </ScrollView>
           <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-            {page === 'patterns' && step >= maxStep ? (
+            {step >= maxStep ? (
               <>
                 <Btn label="Save privately" disabled={!canContinue} onPress={finish} style={!canContinue ? styles.disabled : undefined} />
                 <Btn label="Finish" variant="secondary" onPress={finishWithoutSaving} />
@@ -157,12 +202,137 @@ function Card({ icon, title, body, color, onPress }: { icon: string; title: stri
   return <Pressable onPress={onPress} style={styles.card}><Text style={styles.cardIcon}>{icon}</Text><Heading style={styles.cardTitle}>{title}</Heading><Text style={styles.body}>{body}</Text><Text style={[styles.start, { color }]}>Start ›</Text></Pressable>;
 }
 
-function Values({ step, selected, onSelect, text, setText }: { step: number; selected: string | null; onSelect: (item: string) => void; text: string; setText: (value: string) => void }) {
+function Values({
+  step, selected, onSelect, valueNote, setValueNote,
+  towardMoves, setTowardMoves, awayMoves, setAwayMoves,
+  selectedMove, setSelectedMove, smallStep, setSmallStep,
+  when, setWhen, helpChoices, setHelpChoices,
+  customHelp, setCustomHelp, planFeeling, setPlanFeeling,
+}: {
+  step: number; selected: string | null; onSelect: (item: string) => void;
+  valueNote: string; setValueNote: (value: string) => void;
+  towardMoves: string[]; setTowardMoves: (moves: string[]) => void;
+  awayMoves: string[]; setAwayMoves: (moves: string[]) => void;
+  selectedMove: string | null; setSelectedMove: (value: string) => void;
+  smallStep: string; setSmallStep: (value: string) => void;
+  when: string | null; setWhen: (value: string | null) => void;
+  helpChoices: string[]; setHelpChoices: (values: string[]) => void;
+  customHelp: string; setCustomHelp: (value: string) => void;
+  planFeeling: string | null; setPlanFeeling: (value: string) => void;
+}) {
   const [showIdeas, setShowIdeas] = useState(false);
-  if (step === 0) return <><Text style={styles.kicker}>VALUE</Text><Text style={styles.body}>A value is something you care about, like health, family, friendship, learning, or being kind to yourself.</Text><Heading style={styles.question}>What value do you care about?</Heading><Choices items={values} selected={selected} onSelect={onSelect} /><Btn label="Need an idea?" variant="ghost" onPress={() => setShowIdeas((shown) => !shown)} />{showIdeas ? <View style={styles.ideaList}>{['Being there for people I care about', 'Learning something new', 'Taking care of my wellbeing'].map((idea) => <Pressable key={idea} onPress={() => onSelect(idea)} style={styles.idea}><Text style={styles.body}>{idea}</Text></Pressable>)}</View> : null}</>;
-  if (step === 1) return <><Text style={styles.body}>Write down behaviors that move you toward or away from {selected ?? 'your value'}.</Text><Text style={styles.kicker}>TOWARD</Text><TextInput value={text} onChangeText={setText} placeholder="What behavior moves you toward it?" placeholderTextColor={Palette.neutral600} style={styles.input} /><Text style={styles.kicker}>AWAY</Text><TextInput placeholder="What behavior moves you away from it?" placeholderTextColor={Palette.neutral600} style={styles.input} /></>;
-  if (step === 2) return <><Text style={styles.kicker}>TOWARD</Text><Text style={styles.muted}>Which toward move would you like to work on?</Text><Text style={styles.kicker}>AWAY</Text><Text style={styles.muted}>Go back to Moves to add some behaviors.</Text></>;
-  return <Review value={selected ?? '-'} move={text || '-'} />;
+
+  if (step === 0) return <>
+    <Text style={styles.kicker}>VALUE</Text>
+    <Text style={styles.body}>A value is something you care about, like health, family, friendship, learning, or being kind to yourself.</Text>
+    <Heading style={styles.question}>What value do you care about?</Heading>
+    <Choices items={values} selected={selected} onSelect={(item) => { onSelect(item); setValueNote(''); }} />
+    <Btn label="Need an idea?" variant="ghost" onPress={() => setShowIdeas((shown) => !shown)} />
+    {showIdeas ? <View style={styles.ideaList}>{['Being there for people I care about', 'Learning something new', 'Taking care of my wellbeing'].map((idea) => <Pressable key={idea} onPress={() => onSelect(idea)} style={styles.idea}><Text style={styles.body}>{idea}</Text></Pressable>)}</View> : null}
+    {selected ? <>
+      <Heading style={styles.question}>What does {selected} mean to you here?</Heading>
+      <TextInput
+        value={valueNote}
+        onChangeText={setValueNote}
+        multiline
+        placeholder={VALUE_PLACEHOLDERS[selected] ?? 'Tell us more…'}
+        placeholderTextColor={Palette.neutral600}
+        style={styles.input}
+      />
+    </> : null}
+  </>;
+
+  if (step === 1) {
+    const displayLabel = valueNote.trim() || selected || 'your value';
+    return <>
+      <Text style={styles.body}>Write down behaviors that move you toward or away from {displayLabel}.</Text>
+      <Text style={styles.kicker}>TOWARD</Text>
+      <MoveList moves={towardMoves} onChange={setTowardMoves} examples={TOWARD_EXAMPLES[selected ?? ''] ?? []} fallbackPlaceholder="What behavior moves you toward it?" />
+      <Text style={styles.kicker}>AWAY</Text>
+      <MoveList moves={awayMoves} onChange={setAwayMoves} examples={AWAY_EXAMPLES[selected ?? ''] ?? []} fallbackPlaceholder="What behavior moves you away from it?" />
+    </>;
+  }
+
+  if (step === 2) {
+    const filledToward = towardMoves.filter((move) => move.trim());
+    const toggleHelp = (option: string) => setHelpChoices(helpChoices.includes(option) ? helpChoices.filter((item) => item !== option) : [...helpChoices, option]);
+    return <>
+      <Text style={styles.kicker}>PLAN</Text>
+      <Heading style={styles.question}>Which toward move would you like to work on?</Heading>
+      {filledToward.length === 0 ? (
+        <Text style={styles.muted}>Go back to Moves to add some behaviors.</Text>
+      ) : (
+        <Choices items={filledToward} selected={selectedMove} onSelect={setSelectedMove} />
+      )}
+      {selectedMove ? <>
+        <Text style={styles.kicker}>SMALL STEP</Text>
+        <Heading style={styles.question}>What&apos;s one small step you could take?</Heading>
+        <TextInput
+          value={smallStep}
+          onChangeText={setSmallStep}
+          multiline
+          placeholder="Describe a small step…"
+          placeholderTextColor={Palette.neutral600}
+          style={styles.input}
+        />
+        <Text style={styles.kicker}>WHEN (OPTIONAL)</Text>
+        <Choices items={WHEN_OPTIONS} selected={when} onSelect={(item) => setWhen(when === item ? null : item)} />
+        <Text style={styles.kicker}>WHAT WOULD HELP (OPTIONAL)</Text>
+        <MultiChoices items={HELP_OPTIONS} selected={helpChoices} onToggle={toggleHelp} />
+        {helpChoices.includes('Write my own') ? (
+          <TextInput
+            value={customHelp}
+            onChangeText={setCustomHelp}
+            placeholder="What would help you…"
+            placeholderTextColor={Palette.neutral600}
+            style={styles.input}
+          />
+        ) : null}
+      </> : null}
+    </>;
+  }
+
+  const helpSummary = helpChoices.map((choice) => (choice === 'Write my own' && customHelp ? customHelp : choice));
+  return <>
+    <Text style={styles.kicker}>WHAT MATTERS TO ME</Text>
+    <Text style={styles.body}>{valueNote.trim() || selected || '-'}</Text>
+    <Text style={styles.kicker}>MY TOWARD MOVE</Text>
+    <Text style={styles.body}>{selectedMove || '-'}</Text>
+    <Text style={styles.kicker}>MY PLAN</Text>
+    <Text style={styles.body}>{smallStep || '-'}</Text>
+    {when ? <Text style={styles.muted}>{when}</Text> : null}
+    {helpSummary.length > 0 ? (
+      <View style={styles.chipRow}>{helpSummary.map((item) => <Text key={item} style={styles.chip}>{item}</Text>)}</View>
+    ) : null}
+    <Heading style={styles.question}>Does this plan move you toward what matters to you?</Heading>
+    <Choices items={CHECK_IN_OPTIONS} selected={planFeeling} onSelect={setPlanFeeling} />
+  </>;
+}
+
+function MoveList({ moves, onChange, examples, fallbackPlaceholder }: { moves: string[]; onChange: (moves: string[]) => void; examples: string[]; fallbackPlaceholder: string }) {
+  const updateAt = (index: number, value: string) => onChange(moves.map((move, i) => (i === index ? value : move)));
+  const removeAt = (index: number) => onChange(moves.filter((_, i) => i !== index));
+  return <View style={styles.moveList}>
+    {moves.map((move, index) => (
+      <View key={index} style={styles.moveRow}>
+        <TextInput
+          value={move}
+          onChangeText={(value) => updateAt(index, value)}
+          placeholder={examples[index] ?? fallbackPlaceholder}
+          placeholderTextColor={Palette.neutral600}
+          style={[styles.input, styles.moveInput]}
+        />
+        {moves.length > 1 ? (
+          <Pressable onPress={() => removeAt(index)} style={styles.moveRemoveBtn}><Text style={styles.moveRemoveText}>✕</Text></Pressable>
+        ) : null}
+      </View>
+    ))}
+    {moves.length < MAX_MOVES ? <Btn label="+ Add another" variant="ghost" onPress={() => onChange([...moves, ''])} /> : null}
+  </View>;
+}
+
+function MultiChoices({ items, selected, onToggle }: { items: string[]; selected: string[]; onToggle: (item: string) => void }) {
+  return <View style={styles.choices}>{items.map((item) => <Pressable key={item} onPress={() => onToggle(item)} style={[styles.choice, selected.includes(item) && styles.choiceOn]}><Text style={styles.body}>{item}</Text></Pressable>)}</View>;
 }
 
 function Patterns({
@@ -306,6 +476,5 @@ function PromptStep({
 }
 
 function Choices({ items, selected, onSelect }: { items: string[]; selected: string | null; onSelect: (item: string) => void }) { return <View style={styles.choices}>{items.map((item) => <Pressable key={item} onPress={() => onSelect(item)} style={[styles.choice, item === selected && styles.choiceOn]}><Text style={styles.body}>{item}</Text></Pressable>)}</View>; }
-function Review({ value, move }: { value: string; move: string }) { return <><Text style={styles.kicker}>WHAT MATTERS TO ME</Text><Text style={styles.body}>{value}</Text><Text style={styles.kicker}>MY TOWARD MOVE</Text><Text style={styles.body}>{move}</Text><Text style={styles.kicker}>MY PLAN</Text><View style={styles.input}><Text style={styles.muted}>-</Text></View><Heading style={styles.question}>Does this plan move you toward what matters to you?</Heading><Choices items={['Yes', 'A little', 'Not really', "I'm not sure"]} selected={null} onSelect={() => undefined} /></>; }
 
-const styles = themedStyleSheet(() => ({ screen: { flex: 1, backgroundColor: Palette.bg }, tabs: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Palette.neutral300, color: Palette.neutral600 }, tabOn: { color: Palette.accent2_700, fontWeight: '700' }, home: { padding: 20, gap: 16 }, brand: { flexDirection: 'row', alignItems: 'center', gap: 10 }, brandMark: { color: Palette.accent2_700, fontSize: 26 }, brandTitle: { fontSize: 24 }, muted: { color: Palette.neutral700, fontSize: 14, lineHeight: 21 }, card: { backgroundColor: Palette.neutral100, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.xl, padding: 20, gap: 10, boxShadow: Shadow.elevSm }, cardIcon: { fontSize: 26 }, cardTitle: { fontSize: 20 }, start: { fontSize: 13, fontWeight: '700' }, content: { padding: 20, gap: 16, paddingBottom: 40 }, kicker: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }, question: { color: Palette.text, fontSize: 22, lineHeight: 28 }, body: { color: Palette.text, fontSize: 15, lineHeight: 23 }, choices: { gap: 10 }, choice: { padding: 15, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, choiceOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg }, input: { minHeight: 72, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 14, color: Palette.text, boxShadow: Shadow.elevSm }, ideaList: { gap: 8 }, idea: { padding: 12, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, barCardsList: { gap: 14 }, barCard: { gap: 14, padding: 16, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, barCardOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg }, barCardPreview: { padding: 12, gap: 8 }, barCardTitle: { fontSize: 16 }, otherSubtitle: { color: Palette.neutral700, fontSize: 13, lineHeight: 18, fontWeight: '400' }, barCallout: { backgroundColor: 'rgba(0, 0, 0, 0.25)', borderRadius: Radius.lg, paddingVertical: 12, paddingHorizontal: 14 }, barCalloutText: { color: Palette.text, fontSize: 13, lineHeight: 19, fontWeight: '400' }, barRows: { gap: 12 }, barRow: { gap: 5 }, barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' }, barText: { color: Palette.text, fontSize: 12 }, barValue: { color: Palette.neutral700, fontSize: 12 }, barTrack: { height: 8, borderRadius: Radius.pill, backgroundColor: Palette.neutral200, overflow: 'hidden' }, barFill: { height: '100%', borderRadius: Radius.pill, backgroundColor: Palette.accent2_700 }, footer: { padding: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: Palette.neutral300, gap: 10 }, disabled: { opacity: 0.35 } }));
+const styles = themedStyleSheet(() => ({ screen: { flex: 1, backgroundColor: Palette.bg }, tabs: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Palette.neutral300, color: Palette.neutral600 }, tabOn: { color: Palette.accent2_700, fontWeight: '700' }, home: { padding: 20, gap: 16 }, brand: { flexDirection: 'row', alignItems: 'center', gap: 10 }, brandMark: { color: Palette.accent2_700, fontSize: 26 }, brandTitle: { fontSize: 24 }, muted: { color: Palette.neutral700, fontSize: 14, lineHeight: 21 }, card: { backgroundColor: Palette.neutral100, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.xl, padding: 20, gap: 10, boxShadow: Shadow.elevSm }, cardIcon: { fontSize: 26 }, cardTitle: { fontSize: 20 }, start: { fontSize: 13, fontWeight: '700' }, content: { padding: 20, gap: 16, paddingBottom: 40 }, kicker: { color: Palette.accent2_700, fontSize: 12, fontWeight: '700', letterSpacing: 0.7 }, question: { color: Palette.text, fontSize: 22, lineHeight: 28 }, body: { color: Palette.text, fontSize: 15, lineHeight: 23 }, choices: { gap: 10 }, choice: { padding: 15, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, choiceOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg }, input: { minHeight: 72, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, padding: 14, color: Palette.text, boxShadow: Shadow.elevSm }, ideaList: { gap: 8 }, idea: { padding: 12, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, moveList: { gap: 10 }, moveRow: { flexDirection: 'row', alignItems: 'center', gap: 8 }, moveInput: { flex: 1, minHeight: 0 }, moveRemoveBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.neutral200 }, moveRemoveText: { color: Palette.neutral700, fontSize: 13, fontWeight: '700' }, chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { color: Palette.accent2_800, backgroundColor: Palette.accent2_100, borderRadius: Radius.pill, paddingVertical: 6, paddingHorizontal: 12, fontSize: 12.5, fontWeight: '600' }, barCardsList: { gap: 14 }, barCard: { gap: 14, padding: 16, borderWidth: 1, borderColor: Palette.neutral300, borderRadius: Radius.lg, backgroundColor: Palette.neutral100, boxShadow: Shadow.elevSm }, barCardOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100, boxShadow: Shadow.lg }, barCardPreview: { padding: 12, gap: 8 }, barCardTitle: { fontSize: 16 }, otherSubtitle: { color: Palette.neutral700, fontSize: 13, lineHeight: 18, fontWeight: '400' }, barCallout: { backgroundColor: 'rgba(0, 0, 0, 0.25)', borderRadius: Radius.lg, paddingVertical: 12, paddingHorizontal: 14 }, barCalloutText: { color: Palette.text, fontSize: 13, lineHeight: 19, fontWeight: '400' }, barRows: { gap: 12 }, barRow: { gap: 5 }, barLabelRow: { flexDirection: 'row', justifyContent: 'space-between' }, barText: { color: Palette.text, fontSize: 12 }, barValue: { color: Palette.neutral700, fontSize: 12 }, barTrack: { height: 8, borderRadius: Radius.pill, backgroundColor: Palette.neutral200, overflow: 'hidden' }, barFill: { height: '100%', borderRadius: Radius.pill, backgroundColor: Palette.accent2_700 }, footer: { padding: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: Palette.neutral300, gap: 10 }, disabled: { opacity: 0.35 } }));
