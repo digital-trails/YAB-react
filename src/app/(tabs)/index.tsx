@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { DotTexture, Heading } from '@/components/ui';
+import { Heading } from '@/components/ui';
 import { getModuleCompletions, getModuleDraft, type ModuleCompletion, type ModuleDraft } from '@/data/module-history';
 import { Palette, Radius, Shadow , themedStyleSheet } from '@/constants/tokens';
 
@@ -45,13 +45,13 @@ export default function HomeScreen() {
           contentFit="contain"
         />
         <Heading style={styles.logo} numberOfLines={1}>
-          No Comparison
+          NoComparison
         </Heading>
       </View>
 
       {/* Greeting */}
       <Heading style={styles.greeting} numberOfLines={1}>
-        Good afternoon, Maya
+        Good afternoon, Maya!
       </Heading>
 
       {/* Quote card */}
@@ -61,7 +61,7 @@ export default function HomeScreen() {
         <Text style={styles.quoteAuthor}>- Teddy Roosevelt</Text>
       </View>
 
-      {/* TUNE IN — primary action */}
+      {/* TUNE IN - primary action */}
       <Pressable
         onPress={() => router.push('/tune-in')}
         style={({ pressed }) => [styles.tuneIn, pressed && styles.pressed]}>
@@ -71,7 +71,7 @@ export default function HomeScreen() {
         <Ionicons name="play" size={26} color={Palette.bg} />
       </Pressable>
 
-      {/* SHIFT IT — secondary action */}
+      {/* SHIFT IT - secondary action */}
       <Pressable
         onPress={() => router.push('/library')}
         style={({ pressed }) => [styles.shiftIt, pressed && styles.pressed]}>
@@ -99,7 +99,6 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           {statItems.map((stat) => (
             <View key={stat.caption} style={styles.statTile}>
-              <DotTexture color={Palette.statDot} />
               <Heading style={[styles.statValue, { color: stat.color }]}>{stat.value}</Heading>
               <Text style={styles.statCaption}>{stat.caption}</Text>
             </View>
@@ -131,12 +130,12 @@ const styles = themedStyleSheet(() => ({
   logo: { fontSize: 22, color: Palette.text },
   greeting: { fontSize: 19, color: Palette.text },
 
-  // Quote card
+  // QUOTE CARD
   quoteCard: {
     backgroundColor: Palette.quoteBg,
     borderRadius: Radius.xl,
-    paddingVertical: 28,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 25,
     overflow: 'hidden',
     boxShadow: Shadow.elevSm,
   },
@@ -151,9 +150,9 @@ const styles = themedStyleSheet(() => ({
   },
   quoteText: { fontSize: 16, color: Palette.text, lineHeight: 23, fontWeight: '500' },
   quoteAuthor: {
-    fontSize: 16,
+    fontSize: 15,
     color: Palette.text,
-    lineHeight: 23,
+    lineHeight: 20,
     fontWeight: '500',
     textAlign: 'right',
     marginTop: 6,
@@ -163,7 +162,7 @@ const styles = themedStyleSheet(() => ({
   tuneIn: {
     backgroundColor: Palette.tuneInBg,
     borderRadius: Radius.xl,
-    height: 70,
+    height: 55,
     paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,7 +179,7 @@ const styles = themedStyleSheet(() => ({
   shiftIt: {
     backgroundColor: Palette.shiftItBg,
     borderRadius: Radius.xl,
-    height: 70,
+    height: 55,
     paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
@@ -199,7 +198,7 @@ const styles = themedStyleSheet(() => ({
   shiftLabel: { fontSize: 16, fontWeight: '800', color: Palette.text, letterSpacing: 0.5 },
 
   // Sections
-  section: { gap: 12, marginTop: 4 },
+  section: { gap: 10, marginTop: 4 },
   sectionLabel: {
     fontSize: 12,
     textTransform: 'uppercase',
@@ -249,13 +248,13 @@ const styles = themedStyleSheet(() => ({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    paddingVertical: 22,
+    paddingVertical: 13,
     borderRadius: Radius.lg,
     backgroundColor: Palette.statBg,
     overflow: 'hidden',
   },
   statValue: { fontSize: 24 },
-  statCaption: { fontSize: 11.5, color: Palette.neutral700 },
+  statCaption: { fontSize: 11.5, color: Palette.neutral700, textAlign: 'center' },
 }));
 
 function calculateStreak(completions: ModuleCompletion[]) {
