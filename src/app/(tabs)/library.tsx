@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
+import { type ReactNode } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Heading } from '@/components/ui';
-import { Palette, Radius, Shadow } from '@/constants/tokens';
+import { Palette, Radius, Shadow, themedStyleSheet } from '@/constants/tokens';
 
 export default function LibraryScreen() {
   const router = useRouter();
@@ -34,6 +35,12 @@ export default function LibraryScreen() {
           body="Choose what matters and take one small step toward it."
           onPress={() => router.push('/goals-flow' as never)}
         />
+
+        <LibraryCard
+          title="My Reality"
+          body="See how much your feed might be leaving out."
+          onPress={() => router.push('/reality-flow' as never)}
+        />
       </LibrarySection>
 
       <LibrarySection
@@ -42,7 +49,7 @@ export default function LibraryScreen() {
       >
         <LibraryCard
           title="I’m Doing It"
-          body="Guess today's positive word and remember when you showed it."
+          body="Guess today’s positive word and remember when you showed it."
           onPress={() =>
             router.push('/accomplishments-flow?section=game' as never)
           }
@@ -96,7 +103,7 @@ function LibrarySection({
 }: {
   title: string;
   description: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <View style={styles.section}>
@@ -143,7 +150,7 @@ function LibraryCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   scroll: {
     flex: 1,
     backgroundColor: Palette.bg,
@@ -229,4 +236,4 @@ const styles = StyleSheet.create({
     fontSize: 22,
     marginTop: 12,
   },
-});
+}));

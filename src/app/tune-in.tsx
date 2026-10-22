@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
@@ -17,12 +17,14 @@ import {
   InfoNote,
   MultiSelect,
   QuestionHeader,
+  RatingSlider,
   ScaleInput,
   SingleSelect,
   TextField,
 } from '@/components/survey';
 import { Btn, Heading } from '@/components/ui';
-import { Palette, Radius } from '@/constants/tokens';
+import { Palette, themedStyleSheet } from '@/constants/tokens';
+import { clearModuleDraft, getModuleDraft, recordModuleCompletion, saveModuleDraft } from '@/data/module-history';
 
 const MOOD_EMOJIS = ['😞', '😕', '😐', '🙂', '😄'];
 
@@ -44,6 +46,7 @@ const DOMAINS = [
   'Academic/Work',
   'Relationships/Social Life',
   'Friends',
+  'Sports',
   'Family',
   'Fitness/Body/Weight',
   'Nutrition/Food',
@@ -68,9 +71,11 @@ const DOING = [
 ];
 
 const TARGETS = [
-  'Close friends or family',
+  'Close friends',
+  'Family',
   'Peers/acquaintances',
-  'Influencers/creators/strangers',
+  'Influencers/content creators',
+  'Strangers',
   'Meme accounts',
   'News accounts',
   'Other',
@@ -87,21 +92,18 @@ const EMOTION_WORDS = [
   'Sad',
 ];
 
-const NEXT_CHOICES = [
-  'Practice a skill',
-  'Talk to someone',
-  'Take a break',
-  'Set the phone down',
-];
+const NEXT_CHOICES = ['Practice a skill', 'Something else'];
+const NEXT_IDEAS = ['Talk to someone', 'Put the phone away', 'Take a break from scrolling'];
 
 type Answers = {
   mood: number | null;
   compared: string | null;
   clarifier: string | null;
+  relative: string | null;
   kind: string | null;
   affect: string | null;
   reflection: string;
-  platform: string | null;
+  platforms: string[];
   platformOther: string;
   intensity: number | null;
   domains: string[];
@@ -113,29 +115,32 @@ type Answers = {
   jIntensity: number | null;
   jThoughts: string;
   jAfter: string;
-  jNext: string[];
+  jNextChoice: string | null;
+  jNext: string;
 };
 
 const INITIAL: Answers = {
   mood: null,
   compared: null,
   clarifier: null,
+  relative: null,
   kind: null,
   affect: null,
   reflection: '',
-  platform: null,
+  platforms: [],
   platformOther: '',
-  intensity: null,
+  intensity: 50,
   domains: [],
   domainOther: '',
   doing: [],
   triggerText: '',
   target: [],
   jFeelings: '',
-  jIntensity: null,
+  jIntensity: 50,
   jThoughts: '',
   jAfter: '',
-  jNext: [],
+  jNextChoice: null,
+  jNext: '',
 };
 
 type Step = {
@@ -148,14 +153,25 @@ type Step = {
 
 export default function TuneInSurvey() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [a, setA] = useState<Answers>(INITIAL);
+  const [showNextIdeas, setShowNextIdeas] = useState(false);
+
+  useEffect(() => {
+    if (resume !== '1') return;
+    void getModuleDraft().then((draft) => {
+      if (!draft || draft.moduleId !== 'tune-in') return;
+      setStep(draft.step);
+      if (draft.state) setA(draft.state as Answers);
+    });
+  }, [resume]);
 
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) =>
     setA((prev) => ({ ...prev, [key]: value }));
 
-  const toggle = (key: 'domains' | 'doing' | 'target' | 'jNext', value: string) =>
+  const toggle = (key: 'platforms' | 'domains' | 'doing' | 'target', value: string) =>
     setA((prev) => {
       const list = prev[key];
       return {
@@ -164,7 +180,46 @@ export default function TuneInSurvey() {
       };
     });
 
-  const close = () => router.back();
+  const close = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+  const finish = async () => {
+    await recordModuleCompletion({
+      moduleId: 'tune-in',
+      title: 'Comparison Check',
+      body: a.reflection.trim() || (a.affect ? `Felt ${a.affect.toLowerCase()} after comparing.` : undefined),
+      metadata: {
+        mood: a.mood ?? 3,
+        compared: a.compared === 'Yes' || a.clarifier === 'Yes' || a.clarifier === 'Maybe' ? 1 : 0,
+        affect: a.affect ?? '',
+        platform: a.platforms[0] ?? '',
+        intensity: a.intensity ?? 50,
+        domains: a.domains.join('|'),
+        doing: a.doing.join('|'),
+        target: a.target.join('|'),
+        hour: new Date().getHours(),
+      },
+    });
+    await clearModuleDraft('tune-in');
+    close();
+  };
+  const previousStep = useRef(step);
+  const [questionOpacity] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    previousStep.current = step;
+    questionOpacity.setValue(0);
+    Animated.timing(questionOpacity, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [questionOpacity, step]);
 
   // The full set of questions when a comparison did (or might have) happened.
   const mainSteps: Step[] = [
@@ -180,12 +235,14 @@ export default function TuneInSurvey() {
           />
           <SingleSelect
             options={[
-              'Someone had something I wanted',
-              'I had something someone else wanted',
-              'We seemed about the same',
+              'I compared myself to others who seemed better off than me.',
+              'I compared myself to others who seemed worse off than me.',
+              'I compared myself to others who seemed similar to me.',
             ]}
             value={a.kind}
-            onChange={(v) => set('kind', v)}
+            onChange={(v) => {
+              set('kind', v);
+            }}
           />
         </>
       ),
@@ -195,13 +252,15 @@ export default function TuneInSurvey() {
       canContinue: !!a.affect,
       content: (
         <>
-          <QuestionHeader title="How did you feel about yourself?" />
+          <QuestionHeader title="How did you feel about yourself after making the comparison?" />
           <SingleSelect
             options={['Better', 'Worse', 'No different']}
             value={a.affect}
-            onChange={(v) => set('affect', v)}
+            onChange={(v) => {
+              set('affect', v);
+            }}
           />
-          <Text style={styles.optionalLabel}>Optional — why do you think it made you feel that way?</Text>
+          <Text style={styles.optionalLabel}>Optional: why do you think it made you feel that way?</Text>
           <TextField
             value={a.reflection}
             onChange={(v) => set('reflection', v)}
@@ -212,15 +271,15 @@ export default function TuneInSurvey() {
     },
     {
       key: 'platform',
-      canContinue: !!a.platform && (a.platform !== 'Other' || a.platformOther.trim().length > 0),
+      canContinue: a.platforms.length > 0 && (!a.platforms.includes('Other') || a.platformOther.trim().length > 0),
       content: (
         <>
           <QuestionHeader
-            title="What app were you using?"
-            subtitle="When you compared yourself to others."
+            title="What apps were you using?"
+            subtitle="Select all that apply."
           />
-          <SingleSelect options={PLATFORMS} value={a.platform} onChange={(v) => set('platform', v)} />
-          {a.platform === 'Other' ? (
+          <MultiSelect options={PLATFORMS} values={a.platforms} onToggle={(v) => toggle('platforms', v)} />
+          {a.platforms.includes('Other') ? (
             <TextField
               value={a.platformOther}
               onChange={(v) => set('platformOther', v)}
@@ -235,15 +294,15 @@ export default function TuneInSurvey() {
       canContinue: a.intensity !== null,
       content: (
         <>
-          <QuestionHeader
-            title="When the feeling was strongest, how did the comparison feel?"
-          />
-          <ScaleInput
-            points={7}
-            value={a.intensity}
+          <QuestionHeader title="How intense was the comparison?" />
+          <RatingSlider
+            value={a.intensity ?? 50}
             onChange={(v) => set('intensity', v)}
-            minLabel="Very positive"
-            maxLabel="Very negative"
+            minEmoji="○"
+            maxEmoji="●"
+            minLabel="Not at all intense"
+            maxLabel="Extremely intense"
+            min={0}
           />
         </>
       ),
@@ -328,13 +387,14 @@ export default function TuneInSurvey() {
       canContinue: a.jIntensity !== null,
       content: (
         <>
-          <QuestionHeader title="How intense were those feelings?" />
-          <ScaleInput
-            points={7}
-            value={a.jIntensity}
+          <QuestionHeader title="How did you feel about yourself after making the comparison?" />
+          <RatingSlider
+            value={a.jIntensity ?? 50}
             onChange={(v) => set('jIntensity', v)}
-            minLabel="Barely"
-            maxLabel="Very intense"
+            minEmoji="😌"
+            maxEmoji="😰"
+            minLabel="Not at all"
+            maxLabel="Very much"
           />
         </>
       ),
@@ -356,7 +416,7 @@ export default function TuneInSurvey() {
       key: 'j-after',
       content: (
         <>
-          <QuestionHeader title="What did you do afterward, if anything?" />
+          <QuestionHeader title="What did you do afterward to respond to the comparison, if anything?" />
           <TextField
             value={a.jAfter}
             onChange={(v) => set('jAfter', v)}
@@ -367,10 +427,45 @@ export default function TuneInSurvey() {
     },
     {
       key: 'j-next',
+      canContinue: a.jNextChoice === 'Practice a skill' || (a.jNextChoice === 'Something else' && a.jNext.trim().length > 0),
       content: (
         <>
-          <QuestionHeader title="What would you like to do next?" subtitle="Pick any that feel right." />
-          <MultiSelect options={NEXT_CHOICES} values={a.jNext} onToggle={(v) => toggle('jNext', v)} />
+          <QuestionHeader title="What would you like to do next?" />
+          <SingleSelect
+            options={NEXT_CHOICES}
+            value={a.jNextChoice}
+            onChange={(v) => {
+              setShowNextIdeas(false);
+              set('jNextChoice', v);
+              if (v === 'Practice a skill') set('jNext', '');
+            }}
+          />
+          {a.jNextChoice === 'Something else' ? (
+            <View style={styles.nextDetails}>
+              <TextField
+                value={a.jNext}
+                onChange={(v) => set('jNext', v)}
+                placeholder="What would you like to do?"
+              />
+              <Btn
+                label="Need an idea?"
+                variant="ghost"
+                onPress={() => setShowNextIdeas((shown) => !shown)}
+              />
+              {showNextIdeas ? (
+                <View style={styles.ideaList}>
+                  {NEXT_IDEAS.map((idea) => (
+                    <Pressable
+                      key={idea}
+                      onPress={() => set('jNext', idea)}
+                      style={[styles.idea, a.jNext === idea && styles.ideaOn]}>
+                      <Text style={styles.ideaText}>{idea}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ),
     },
@@ -383,11 +478,13 @@ export default function TuneInSurvey() {
       canContinue: a.mood !== null,
       content: (
         <>
-          <QuestionHeader kicker="Check in" title="How do you feel Maya?" />
+          <QuestionHeader kicker="Check in" title="How do you feel, Maya?" />
           <ScaleInput
             points={5}
             value={a.mood}
-            onChange={(v) => set('mood', v)}
+            onChange={(v) => {
+              set('mood', v);
+            }}
             emojis={MOOD_EMOJIS}
             minLabel="Very bad"
             maxLabel="Very good"
@@ -402,20 +499,50 @@ export default function TuneInSurvey() {
         <>
           <QuestionHeader title="Did you compare yourself to others on social media today?" />
           <InfoNote>
-            Social comparison is measuring yourself against someone else — their looks, wins,
-            or life. It&apos;s normal, and noticing it is the first skill.
+            Social comparison is measuring yourself against someone else&apos;s looks, wins, or
+            life. It&apos;s normal, and noticing it is the first skill.
           </InfoNote>
           <SingleSelect
             options={['Yes', 'No', 'Not sure']}
             value={a.compared}
             onChange={(v) => set('compared', v)}
           />
+          {a.compared === 'Not sure' ? (
+            <View style={styles.inlineFollowUp}>
+              <QuestionHeader
+                kicker="No pressure"
+                title="Did something you saw make you compare how you look, feel, or live to someone else?"
+                subtitle="It&apos;s okay if you&apos;re still figuring it out."
+              />
+              <SingleSelect
+                options={['Yes', 'Maybe', 'No', 'Still not sure']}
+                value={a.clarifier}
+                onChange={(v) => set('clarifier', v)}
+              />
+              {a.clarifier === 'Maybe' ? (
+                <View style={styles.inlineFollowUp}>
+                  <QuestionHeader title="Did you feel like you had more, less, or about the same as the other person?" />
+                  <SingleSelect
+                    options={['More', 'Less', 'About the same']}
+                    value={a.relative}
+                    onChange={(v) => {
+                      set('relative', v);
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </>
       ),
     },
   ];
 
-  if (a.compared === 'No') {
+  if (
+    a.compared === 'No' ||
+    (a.compared === 'Not sure' && (a.clarifier === 'No' || a.clarifier === 'Still not sure'))
+  ) {
+    // A Not sure → No/Still not sure answer gets a low-pressure, graceful exit.
     steps.push({
       key: 'practice-offer',
       terminal: true,
@@ -424,9 +551,15 @@ export default function TuneInSurvey() {
           <View style={styles.doneBadge}>
             <Ionicons name="leaf-outline" size={30} color={Palette.accent2_700} />
           </View>
-          <Heading style={styles.doneTitle}>Great — that&apos;s worth noting.</Heading>
+          <Heading style={styles.doneTitle}>
+            {a.compared === 'Not sure' && a.clarifier === 'Still not sure'
+              ? "That's okay."
+              : "Great. That's worth noting."}
+          </Heading>
           <Text style={styles.doneBody}>
-            Want to take two minutes to practice your skills while things feel steady?
+            {a.compared === 'Not sure' && a.clarifier === 'Still not sure'
+              ? "Sometimes it's hard to tell. We'll just note that and keep going."
+              : "Want to take two minutes to practice your skills while things feel steady?"}
           </Text>
           <View style={styles.terminalActions}>
             <Btn label="Practice for 2 min" onPress={close} />
@@ -435,28 +568,10 @@ export default function TuneInSurvey() {
         </View>
       ),
     });
-  } else if (a.compared) {
-    if (a.compared === 'Not sure') {
-      steps.push({
-        key: 'clarifier',
-        canContinue: !!a.clarifier,
-        content: (
-          <>
-            <QuestionHeader
-              kicker="No pressure"
-              title="Did anything you saw leave you feeling more or less than someone else?"
-              subtitle="Even a small tug counts — this helps us figure it out together."
-            />
-            <SingleSelect
-              options={['Yeah, a little', 'Not really', 'Still not sure']}
-              value={a.clarifier}
-              onChange={(v) => set('clarifier', v)}
-            />
-          </>
-        ),
-      });
-    }
-    steps.push(...mainSteps);
+  } else if (a.compared === 'Yes' || (a.compared === 'Not sure' && (a.clarifier === 'Yes' || a.clarifier === 'Maybe'))) {
+    // The Not sure clarification is rendered inline on the comparison page.
+    // Once it resolves to Yes/Maybe, continue into the detailed pathway.
+    steps.push(...(a.compared === 'Not sure' && a.clarifier === 'Maybe' ? mainSteps.slice(1) : mainSteps));
     steps.push({
       key: 'complete',
       terminal: true,
@@ -471,15 +586,28 @@ export default function TuneInSurvey() {
             week.
           </Text>
           <View style={styles.terminalActions}>
-            <Btn label="Done" onPress={close} />
+            <Btn label="Done" onPress={finish} />
           </View>
         </View>
       ),
     });
   }
 
+  const saveDraft = useCallback(
+    () => saveModuleDraft({ moduleId: 'tune-in', title: 'Comparison Check', route: '/tune-in', step, totalSteps: steps.length, state: a }),
+    [a, step, steps.length],
+  );
+  useEffect(() => {
+    if (step > 0 || a.mood !== null || a.compared !== null) void saveDraft();
+  }, [a.compared, a.mood, saveDraft, step]);
+
   const current = steps[Math.min(step, steps.length - 1)];
   const isLast = step >= steps.length - 1;
+  const inBranch = a.compared === 'Yes' || (a.compared === 'Not sure' && (a.clarifier === 'Yes' || a.clarifier === 'Maybe'));
+  const progressStart = 2;
+  const progress = inBranch
+    ? Math.min(1, Math.max(0, (step + 1 - progressStart) / Math.max(1, steps.length - progressStart - 1)))
+    : 0;
 
   const goBack = () => (step > 0 ? setStep(step - 1) : close());
   const goNext = () => {
@@ -493,7 +621,13 @@ export default function TuneInSurvey() {
         <Pressable onPress={goBack} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={22} color={Palette.neutral700} />
         </Pressable>
-        <View style={styles.flex} />
+        {inBranch ? (
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+          </View>
+        ) : (
+          <View style={styles.flex} />
+        )}
         <Pressable onPress={close} hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="close" size={22} color={Palette.neutral700} />
         </Pressable>
@@ -506,7 +640,9 @@ export default function TuneInSurvey() {
           contentContainerStyle={styles.body}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
-          {current.content}
+          <Animated.View style={{ opacity: questionOpacity }}>
+            {current.content}
+          </Animated.View>
         </ScrollView>
 
         {!current.terminal ? (
@@ -524,7 +660,7 @@ export default function TuneInSurvey() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(() => ({
   screen: { flex: 1, backgroundColor: Palette.bg },
   flex: { flex: 1 },
   header: {
@@ -535,8 +671,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   headerBtn: { padding: 2 },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    backgroundColor: Palette.neutral300,
+  },
+  progressFill: { height: '100%', borderRadius: 3, backgroundColor: Palette.accent2 },
   body: { padding: 20, gap: 18 },
+  inlineFollowUp: {
+    gap: 14,
+    marginTop: 18,
+    paddingTop: 18,
+    borderTopWidth: 1,
+    borderTopColor: Palette.neutral300,
+  },
   optionalLabel: { fontSize: 12.5, color: Palette.neutral700, marginTop: 2 },
+  scaleHint: { fontSize: 12.5, color: Palette.neutral700, lineHeight: 18 },
+  nextDetails: { gap: 10, marginTop: 4 },
+  ideaList: { gap: 8 },
+  idea: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Palette.neutral300,
+    backgroundColor: Palette.neutral100,
+  },
+  ideaOn: { borderColor: Palette.accent2, backgroundColor: Palette.accent2_100 },
+  ideaText: { fontSize: 14, color: Palette.text },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -557,4 +721,4 @@ const styles = StyleSheet.create({
   doneTitle: { fontSize: 24, color: Palette.text, textAlign: 'center' },
   doneBody: { fontSize: 14, color: Palette.neutral700, textAlign: 'center', lineHeight: 21 },
   terminalActions: { alignSelf: 'stretch', gap: 10, marginTop: 12 },
-});
+}));
