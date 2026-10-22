@@ -1,6 +1,7 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { installMouseAsTouch } from '@/components/mouse-as-touch';
 import { useTheme } from '@/hooks/use-theme';
 
 /**
@@ -19,6 +20,13 @@ const STATUS_BAR_HEIGHT = 50;
 
 export function PhoneFrame({ children }: { children: ReactNode }) {
   const theme = useTheme();
+  const screenRef = useRef<View>(null);
+
+  // The simulated screen also simulates the finger: see mouse-as-touch.ts.
+  useEffect(() => {
+    const screen = screenRef.current as unknown as HTMLElement | null;
+    return screen ? installMouseAsTouch(screen) : undefined;
+  }, []);
 
   return (
     <View style={styles.backdrop}>
@@ -29,7 +37,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
         <View style={[styles.btnLeft, styles.btnVolumeDown]} />
         <View style={styles.btnPower} />
 
-        <View style={[styles.screen, { backgroundColor: theme.background }]}>
+        <View ref={screenRef} style={[styles.screen, { backgroundColor: theme.background }]}>
           <StatusBar />
           <View style={styles.appArea}>{children}</View>
           {/* Dynamic Island sits over the status bar, clear of app content */}
